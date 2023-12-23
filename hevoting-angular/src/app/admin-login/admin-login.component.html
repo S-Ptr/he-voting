@@ -1,0 +1,12 @@
+<form>
+    <label for="username">Korisnicko ime:</label>
+    <input type='text' name='username' [(ngModel)]='username'>
+    <label for="pass">Lozinka:</label>
+    <input type='password' name='pass' [(ngModel)]='pass'>
+    <button (click)='PrijaviSe()'>Prijavi se</button>
+</form>
+
+
+<div *ngIf='msg' class='greska'>
+    {{msg}}
+</div>

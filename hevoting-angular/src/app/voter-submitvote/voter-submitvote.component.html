@@ -1,0 +1,14 @@
+<h1>{{title}}</h1>
+
+<div *ngFor="let i of candidates">
+    <label for="vote_{{i.ord}}">{{i.name}}</label>
+    <input id="vote_{{i.ord}}" type="radio" name="vote" [(ngModel)]="chosen" [value] = i.ord>
+    
+</div>
+
+<label for="confirm">Potvrđujem svoj glas za izabranog kandidata</label>
+<input type="checkbox" name="checkConfirm" [(ngModel)]="checkConfirm">
+<br/>
+<button class="btn btn-success" [disabled]="!checkConfirm" type="submit" (click)="submitVote()">Objavi</button>
+
+{{msg}}
