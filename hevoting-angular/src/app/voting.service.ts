@@ -24,7 +24,7 @@ export class VotingService {
     return this.http.get(`${this.uri}/poll/`+id);
   }
 
-  submitVote(encrypted:any, user:any, poll:any){
+  submitVote(encrypted:any, user:number, poll:number){
 
     const data ={
       user:user,
@@ -34,6 +34,11 @@ export class VotingService {
     console.log(data);
     const headers = new HttpHeaders({ 'Content-Type': 'application/json' });
 
-    return this.http.post(`${this.uri}/submit-vote`, data, { headers: headers });
+    return this.http.post(`${this.uri}/submit-vote-test`, data, { headers: headers });
+  }
+
+  getAllPolls(){
+    const headers = new HttpHeaders({ 'Content-Type': 'application/json' });
+    return this.http.get(`${this.uri}/get-all-polls`, { headers: headers });
   }
 }

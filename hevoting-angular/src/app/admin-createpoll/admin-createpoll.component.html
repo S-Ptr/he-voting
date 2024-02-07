@@ -1,34 +1,46 @@
-<form [formGroup]="form" (submit)="submit(form.value)">
-    <fieldset>
-      <legend>Tema:</legend>
-  
-      <label for="title-name">Tema:</label>
-      <input type="text" id="title-name" name="title-name" placeholder="(required)" formControlName="title">
-      <br><br>
-    </fieldset>
-  
-    <fieldset>
-      <legend>Kandidati:</legend>
-      <ng-container formArrayName="contacts" *ngFor="let contact of contacts.controls; index as i">
-        <ng-container [formGroupName]="i">
-          <label for="name">Kandidat #{{i+1}}:</label>
-          <input type="text" id="name" name="name"  formControlName="name">
-  
-          <button class="btn btn-danger" type="button" (click)="removeContactField(i)">&#x2718;</button>
-  
-          <br><br>
+<div class="container">
+  <div class="row">
+    <h2>Kreiraj Glasanje</h2>
+  </div>
+
+  <form [formGroup]="form" (submit)="submit(form.value)">
+    <div class="row">
+      <fieldset>
+        <legend>Tema:</legend>
+
+        <label for="title-name">Tema:</label>
+        <input type="text" id="title-name" name="title-name" placeholder="(required)" formControlName="title">
+        <br><br>
+      </fieldset>
+    </div>
+
+    <div class="row">
+      <fieldset>
+        <legend>Kandidati:</legend>
+        <ng-container formArrayName="contacts" *ngFor="let contact of contacts.controls; index as i">
+          <ng-container [formGroupName]="i">
+            <label for="name">Kandidat #{{i+1}}:</label>
+            <input type="text" id="name" name="name" formControlName="name">
+
+            <button class="btn btn-danger" type="button" (click)="removeContactField(i)">&#x2718;</button>
+
+            <br><br>
+          </ng-container>
         </ng-container>
-      </ng-container>
-      
-      
-    </fieldset>
+
+
+      </fieldset>
+
+    </div>
+
     <button class="btn btn-info" type="button" (click)="addContactField()">Dodaj</button>
     <button class="btn btn-secondary" type="button" (click)="reset()">Reset</button>
-    <hr/>
-    <br/>
+    <hr />
+    <br />
     <button class="btn btn-success" [disabled]="!checkConfirm" type="submit">Objavi</button>
   </form>
-  
-    <label for="confirm">Potvrda</label>
-    <input type="checkbox" name="checkConfirm" [(ngModel)]="checkConfirm">
-    <br/>
+
+  <label for="confirm">Potvrda</label>
+  <input type="checkbox" name="checkConfirm" [(ngModel)]="checkConfirm">
+  <br />
+</div>

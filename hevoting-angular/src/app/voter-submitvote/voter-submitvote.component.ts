@@ -14,7 +14,7 @@ var seal:SEALLibrary;
 @Component({
   selector: 'app-voter-submitvote',
   templateUrl: './voter-submitvote.component.html',
-  styleUrls: ['./voter-submitvote.component.css']
+  styleUrls: ['./voter-submitvote.component.css'],
 })
 export class VoterSubmitvoteComponent implements OnInit {
   
@@ -25,11 +25,15 @@ export class VoterSubmitvoteComponent implements OnInit {
   keyarray:string = "";
   serializedPublicKey:string="";
   msg:string = "";
+  processing:boolean=false;
 
-  constructor( private route: ActivatedRoute, private votingservice:VotingService, private formBuilder:FormBuilder, private router:Router) { }
+  constructor( private route: ActivatedRoute, private votingservice:VotingService, private formBuilder:FormBuilder, private router:Router) { 
+    
+  }
   
   ngOnInit(): void {
     let id = this.route.snapshot.paramMap.get('identifier')!;
+    
     this.votingservice.getPoll(id).subscribe((data:any)=>{
       this.title = data.poll.title;
       this.candidates= data.candidates;
@@ -55,6 +59,8 @@ export class VoterSubmitvoteComponent implements OnInit {
       this.msg = "Molimo vas izaberite"
       return;
     }
+    
+    this.processing=true;
     const schemeType = seal.SchemeType.bgv
     const securityLevel = seal.SecurityLevel.tc128
     const polyModulusDegree = 4096
@@ -67,7 +73,7 @@ export class VoterSubmitvoteComponent implements OnInit {
 
     // Create a suitable set of CoeffModulus primes
     encParms.setCoeffModulus(
-      seal.CoeffModulus.BFVDefault(polyModulusDegree, securityLevel)
+      seal.CoeffModulus.Create(polyModulusDegree, new Int32Array([36,36,36]))
     )
 
     // Set the PlainModulus to a prime of bitSize 32.
@@ -84,10 +90,9 @@ export class VoterSubmitvoteComponent implements OnInit {
         'Could not set the parameters in the given context. Please try different encryption parameters.'
       )
     }
+    
     let publickey = seal.PublicKey();
     publickey.load(context, this.serializedPublicKey);
-
-    let evaluator = seal.Evaluator(context);
 
     let dataArray = Array<number>(this.candidates.length).fill(0);
 
@@ -106,18 +111,19 @@ export class VoterSubmitvoteComponent implements OnInit {
       
       encrypted = encryptor.encrypt(plaintext)!;
     }else{
-      this.msg = "Encoding failure. Commit self-destruction."
+      this.msg = "Encoding failure."
       return;
     }
 
     if(encrypted){
       console.log(encrypted);
       let encryptedString = encrypted.save()
-    this.votingservice.submitVote(encryptedString,"user",this.route.snapshot.paramMap.get('identifier')!).subscribe((data)=>{
+    this.votingservice.submitVote(encryptedString,1,Number.parseInt(this.route.snapshot.paramMap.get('identifier')!)).subscribe((data)=>{
+      this.processing=false;
       this.msg = "Sve ok, proveri bekend.";
     });
     }else{
-      this.msg = "Encryption failure. Commit self-destruction."
+      this.msg = "Encryption failure."
       return;
     }
 

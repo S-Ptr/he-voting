@@ -1,0 +1,25 @@
+.custom-shape-divider-bottom-1707228690 {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    overflow: hidden;
+    line-height: 0;
+    transform: rotate(180deg);
+}
+
+.custom-shape-divider-bottom-1707228690 svg {
+    position: relative;
+    display: block;
+    width: calc(100% + 1.3px);
+    height: 110px;
+    transform: rotateY(180deg);
+}
+
+.custom-shape-divider-bottom-1707228690 .shape-fill {
+    fill: #b3d9d9;
+}
+
+.card-header{
+    fill: #b3d9d9;
+}

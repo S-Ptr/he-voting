@@ -2,6 +2,7 @@
 
 #include <drogon/HttpController.h>
 #include <models/Users.h>
+#include <models/Admins.h>
 #include <sodium/crypto_pwhash_argon2id.h>
 #include <sodium/randombytes.h>
 
@@ -20,6 +21,7 @@ namespace heVote
 
             ADD_METHOD_TO(UserController::login, "/login", Post);
             ADD_METHOD_TO(UserController::adminLogin, "/admin-login", Post);
+            ADD_METHOD_TO(UserController::registerAdmin, "/admin-register", Post);
             ADD_METHOD_TO(UserController::registerUser, "/register", Post);
             
 
@@ -31,6 +33,11 @@ namespace heVote
             void login(const HttpRequestPtr& req, std::function<void(const HttpResponsePtr&)>&& callback);
             void adminLogin(const HttpRequestPtr& req, std::function<void(const HttpResponsePtr&)>&& callback);
             void registerUser(const HttpRequestPtr& req, std::function<void(const HttpResponsePtr&)>&& callback);
+            void registerAdmin(const HttpRequestPtr& req, std::function<void(const HttpResponsePtr&)>&& callback);
 
+            UserController();
+    private:
+        drogon::orm::DbClientPtr dbClient;
     };
+
 }

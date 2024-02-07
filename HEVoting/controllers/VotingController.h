@@ -40,6 +40,8 @@ namespace heVote {
             //-- ADD_METHOD_TO(VotingController::showPoll, "/poll/{1}", Get);
             ADD_METHOD_TO(VotingController::createPoll, "/create-poll", Post);
             ADD_METHOD_TO(VotingController::getPoll, "/poll/{1}", Get);
+            ADD_METHOD_TO(VotingController::getAllPolls, "/get-all-polls", Get);
+            ADD_METHOD_TO(VotingController::submitVoteTest, "/submit-vote-test", Post);
             ADD_METHOD_TO(VotingController::submitVote, "/submit-vote", Post);
         METHOD_LIST_END
             // your declaration of processing function maybe like this:
@@ -56,11 +58,11 @@ namespace heVote {
 
 
             void getPoll(const HttpRequestPtr& req, std::function<void (const HttpResponsePtr &)> &&callback, std::string votingId) const;
+            void getAllPolls(const HttpRequestPtr& req, std::function<void(const HttpResponsePtr&)>&& callback) const;
             void results(const HttpRequestPtr& req, std::function<void (const HttpResponsePtr &)> &&callback, std::string votingId) const;
+            void submitVoteTest(const HttpRequestPtr& req, std::function<void(const HttpResponsePtr&)>&& callback);
             void submitVote(const HttpRequestPtr& req, std::function<void(const HttpResponsePtr&)>&& callback);
-            void testMethod(const HttpRequestPtr& req, std::function<void(const HttpResponsePtr&)>&& callback);
 
-    public:
         VotingController();
         ~VotingController();
 
@@ -77,6 +79,6 @@ namespace heVote {
         seal::EncryptionParameters* eParams;
         seal::SEALContext* context;
         seal::Evaluator* evaluator;
-        orm::DbClientPtr dbClient;
+        drogon::orm::DbClientPtr dbClient;
     };
 }

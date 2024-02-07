@@ -14,6 +14,16 @@ import { UserPollComponent } from './user-poll/user-poll.component';
 import { VoterMainComponent } from './voter-main/voter-main.component';
 import { AdminLoginComponent } from './admin-login/admin-login.component';
 import { RegisterComponent } from './register/register.component';
+import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
+import { AdminRegisterComponent } from './admin-register/admin-register.component';
+import { LandingPageComponent } from './landing-page/landing-page.component';
+
+import {MatIconModule} from '@angular/material/icon';
+import {MatButtonModule} from '@angular/material/button';
+import {MatToolbarModule} from '@angular/material/toolbar';
+import {MatCheckboxModule} from '@angular/material/checkbox';
+import {MatProgressSpinnerModule} from '@angular/material/progress-spinner';
+
 
 @NgModule({
   declarations: [
@@ -24,14 +34,22 @@ import { RegisterComponent } from './register/register.component';
     UserPollComponent,
     VoterMainComponent,
     AdminLoginComponent,
-    RegisterComponent
+    RegisterComponent,
+    AdminRegisterComponent,
+    LandingPageComponent
   ],
   imports: [
     BrowserModule,
     AppRoutingModule,
     FormsModule,
     ReactiveFormsModule,
-    HttpClientModule
+    HttpClientModule,
+    BrowserAnimationsModule,
+    MatButtonModule,
+    MatIconModule,
+    MatToolbarModule,
+    MatCheckboxModule,
+    MatProgressSpinnerModule
   ],
   providers: [],
   bootstrap: [AppComponent]

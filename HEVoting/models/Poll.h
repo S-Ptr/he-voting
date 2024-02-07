@@ -46,6 +46,7 @@ class Poll
         static const std::string _title;
         static const std::string _secretkey;
         static const std::string _votes;
+        static const std::string _until;
     };
 
     const static int primaryKeyNumber;
@@ -139,8 +140,17 @@ class Poll
     void setVotes(const std::string &pVotes) noexcept;
     void setVotesToNull() noexcept;
 
+    /**  For column until  */
+    ///Get the value of the column until, returns the default value if the column is null
+    const ::trantor::Date &getValueOfUntil() const noexcept;
+    ///Return a shared_ptr object pointing to the column const value, or an empty shared_ptr object if the column is null
+    const std::shared_ptr<::trantor::Date> &getUntil() const noexcept;
+    ///Set the value of the column until
+    void setUntil(const ::trantor::Date &pUntil) noexcept;
+    void setUntilToNull() noexcept;
 
-    static size_t getColumnNumber() noexcept {  return 4;  }
+
+    static size_t getColumnNumber() noexcept {  return 5;  }
     static const std::string &getColumnName(size_t index) noexcept(false);
 
     Json::Value toJson() const;
@@ -161,6 +171,7 @@ class Poll
     std::shared_ptr<std::string> title_;
     std::shared_ptr<std::vector<char>> secretkey_;
     std::shared_ptr<std::vector<char>> votes_;
+    std::shared_ptr<::trantor::Date> until_;
     struct MetaData
     {
         const std::string colName_;
@@ -172,7 +183,7 @@ class Poll
         const bool notNull_;
     };
     static const std::vector<MetaData> metaData_;
-    bool dirtyFlag_[4]={ false };
+    bool dirtyFlag_[5]={ false };
   public:
     static const std::string &sqlForFindingByPrimaryKey()
     {
@@ -207,6 +218,11 @@ class Poll
             sql += "votes,";
             ++parametersCount;
         }
+        if(dirtyFlag_[4])
+        {
+            sql += "until,";
+            ++parametersCount;
+        }
         needSelection=true;
         if(parametersCount > 0)
         {
@@ -231,6 +247,11 @@ class Poll
             sql.append(placeholderStr, n);
         }
         if(dirtyFlag_[3])
+        {
+            n = sprintf(placeholderStr,"$%d,",placeholder++);
+            sql.append(placeholderStr, n);
+        }
+        if(dirtyFlag_[4])
         {
             n = sprintf(placeholderStr,"$%d,",placeholder++);
             sql.append(placeholderStr, n);

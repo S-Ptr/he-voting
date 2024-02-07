@@ -1,14 +1,49 @@
-<h1>{{title}}</h1>
+<p>
+    <mat-toolbar color="primary">
+        <button mat-icon-button class="example-icon" aria-label="Example icon-button with menu icon">
+            <mat-icon>menu</mat-icon>
+        </button>
+        <span>HEVoting</span>
+        <span class="example-spacer"></span>
+        <button mat-icon-button class="example-icon favorite-icon" aria-label="Example icon-button with heart icon">
+            <mat-icon>favorite</mat-icon>
+        </button>
+        <button mat-icon-button class="example-icon" aria-label="Example icon-button with share icon">
+            <mat-icon>share</mat-icon>
+        </button>
+    </mat-toolbar>
+</p>
+<br />
 
-<div *ngFor="let i of candidates">
-    <label for="vote_{{i.ord}}">{{i.name}}</label>
-    <input id="vote_{{i.ord}}" type="radio" name="vote" [(ngModel)]="chosen" [value] = i.ord>
+<div class="container"> 
+
     
+    <div class="row justify-content-md-center">
+        <div class="col-md-5 unselectable">
+            <h1 style="text-align: center;">{{title}}</h1>
+            <br/>
+
+            <div *ngFor="let i of candidates">
+
+                <input id="vote_{{i.ord}}" type="radio" name="vote" [(ngModel)]="chosen" [value]=i.ord>
+                <label for="vote_{{i.ord}}">{{i.name}}</label>
+
+            </div>
+            <br />
+
+            <mat-checkbox class="example-margin" [(ngModel)]="checkConfirm"[disabled]="chosen==-1">Potvrđujem svoj glas za izabranog kandidata </mat-checkbox>
+            
+            <br />
+            <br />
+            <div class="spinner">
+            <button mat-raised-button color="accent" [disabled]="!checkConfirm || processing" type="submit"(click)="submitVote()">Glasaj</button>       
+                <mat-spinner *ngIf="processing" [diameter]="32"></mat-spinner>
+            </div>
+                <br />
+                <br />
+        </div>
+    </div>
+
+    
+
 </div>
-
-<label for="confirm">Potvrđujem svoj glas za izabranog kandidata</label>
-<input type="checkbox" name="checkConfirm" [(ngModel)]="checkConfirm">
-<br/>
-<button class="btn btn-success" [disabled]="!checkConfirm" type="submit" (click)="submitVote()">Objavi</button>
-
-{{msg}}

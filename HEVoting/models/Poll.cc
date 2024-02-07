@@ -17,6 +17,7 @@ const std::string Poll::Cols::_id = "id";
 const std::string Poll::Cols::_title = "title";
 const std::string Poll::Cols::_secretkey = "secretkey";
 const std::string Poll::Cols::_votes = "votes";
+const std::string Poll::Cols::_until = "until";
 const std::string Poll::primaryKeyName = "id";
 const bool Poll::hasPrimaryKey = true;
 const std::string Poll::tableName = "poll";
@@ -25,7 +26,8 @@ const std::vector<typename Poll::MetaData> Poll::metaData_={
 {"id","int32_t","integer",4,1,1,1},
 {"title","std::string","text",0,0,0,0},
 {"secretkey","std::vector<char>","bytea",0,0,0,0},
-{"votes","std::vector<char>","bytea",0,0,0,0}
+{"votes","std::vector<char>","bytea",0,0,0,0},
+{"until","::trantor::Date","timestamp without time zone",0,0,0,0}
 };
 const std::string &Poll::getColumnName(size_t index) noexcept(false)
 {
@@ -62,11 +64,33 @@ Poll::Poll(const Row &r, const ssize_t indexOffset) noexcept
                 votes_=std::make_shared<std::vector<char>>(drogon::utils::hexToBinaryVector(str.data()+2,str.length()-2));
             }
         }
+        if(!r["until"].isNull())
+        {
+            auto timeStr = r["until"].as<std::string>();
+            struct tm stm;
+            memset(&stm,0,sizeof(stm));
+            auto p = strptime(timeStr.c_str(),"%Y-%m-%d %H:%M:%S",&stm);
+            time_t t = mktime(&stm);
+            size_t decimalNum = 0;
+            if(p)
+            {
+                if(*p=='.')
+                {
+                    std::string decimals(p+1,&timeStr[timeStr.length()]);
+                    while(decimals.length()<6)
+                    {
+                        decimals += "0";
+                    }
+                    decimalNum = (size_t)atol(decimals.c_str());
+                }
+                until_=std::make_shared<::trantor::Date>(t*1000000+decimalNum);
+            }
+        }
     }
     else
     {
         size_t offset = (size_t)indexOffset;
-        if(offset + 4 > r.size())
+        if(offset + 5 > r.size())
         {
             LOG_FATAL << "Invalid SQL result for this model";
             return;
@@ -102,13 +126,36 @@ Poll::Poll(const Row &r, const ssize_t indexOffset) noexcept
                 votes_=std::make_shared<std::vector<char>>(drogon::utils::hexToBinaryVector(str.data()+2,str.length()-2));
             }
         }
+        index = offset + 4;
+        if(!r[index].isNull())
+        {
+            auto timeStr = r[index].as<std::string>();
+            struct tm stm;
+            memset(&stm,0,sizeof(stm));
+            auto p = strptime(timeStr.c_str(),"%Y-%m-%d %H:%M:%S",&stm);
+            time_t t = mktime(&stm);
+            size_t decimalNum = 0;
+            if(p)
+            {
+                if(*p=='.')
+                {
+                    std::string decimals(p+1,&timeStr[timeStr.length()]);
+                    while(decimals.length()<6)
+                    {
+                        decimals += "0";
+                    }
+                    decimalNum = (size_t)atol(decimals.c_str());
+                }
+                until_=std::make_shared<::trantor::Date>(t*1000000+decimalNum);
+            }
+        }
     }
 
 }
 
 Poll::Poll(const Json::Value &pJson, const std::vector<std::string> &pMasqueradingVector) noexcept(false)
 {
-    if(pMasqueradingVector.size() != 4)
+    if(pMasqueradingVector.size() != 5)
     {
         LOG_ERROR << "Bad masquerading vector";
         return;
@@ -145,6 +192,32 @@ Poll::Poll(const Json::Value &pJson, const std::vector<std::string> &pMasqueradi
         {
             auto str = pJson[pMasqueradingVector[3]].asString();
             votes_=std::make_shared<std::vector<char>>(drogon::utils::base64DecodeToVector(str));
+        }
+    }
+    if(!pMasqueradingVector[4].empty() && pJson.isMember(pMasqueradingVector[4]))
+    {
+        dirtyFlag_[4] = true;
+        if(!pJson[pMasqueradingVector[4]].isNull())
+        {
+            auto timeStr = pJson[pMasqueradingVector[4]].asString();
+            struct tm stm;
+            memset(&stm,0,sizeof(stm));
+            auto p = strptime(timeStr.c_str(),"%Y-%m-%d %H:%M:%S",&stm);
+            time_t t = mktime(&stm);
+            size_t decimalNum = 0;
+            if(p)
+            {
+                if(*p=='.')
+                {
+                    std::string decimals(p+1,&timeStr[timeStr.length()]);
+                    while(decimals.length()<6)
+                    {
+                        decimals += "0";
+                    }
+                    decimalNum = (size_t)atol(decimals.c_str());
+                }
+                until_=std::make_shared<::trantor::Date>(t*1000000+decimalNum);
+            }
         }
     }
 }
@@ -185,12 +258,38 @@ Poll::Poll(const Json::Value &pJson) noexcept(false)
             votes_=std::make_shared<std::vector<char>>(drogon::utils::base64DecodeToVector(str));
         }
     }
+    if(pJson.isMember("until"))
+    {
+        dirtyFlag_[4]=true;
+        if(!pJson["until"].isNull())
+        {
+            auto timeStr = pJson["until"].asString();
+            struct tm stm;
+            memset(&stm,0,sizeof(stm));
+            auto p = strptime(timeStr.c_str(),"%Y-%m-%d %H:%M:%S",&stm);
+            time_t t = mktime(&stm);
+            size_t decimalNum = 0;
+            if(p)
+            {
+                if(*p=='.')
+                {
+                    std::string decimals(p+1,&timeStr[timeStr.length()]);
+                    while(decimals.length()<6)
+                    {
+                        decimals += "0";
+                    }
+                    decimalNum = (size_t)atol(decimals.c_str());
+                }
+                until_=std::make_shared<::trantor::Date>(t*1000000+decimalNum);
+            }
+        }
+    }
 }
 
 void Poll::updateByMasqueradedJson(const Json::Value &pJson,
                                             const std::vector<std::string> &pMasqueradingVector) noexcept(false)
 {
-    if(pMasqueradingVector.size() != 4)
+    if(pMasqueradingVector.size() != 5)
     {
         LOG_ERROR << "Bad masquerading vector";
         return;
@@ -228,6 +327,32 @@ void Poll::updateByMasqueradedJson(const Json::Value &pJson,
             votes_=std::make_shared<std::vector<char>>(drogon::utils::base64DecodeToVector(str));
         }
     }
+    if(!pMasqueradingVector[4].empty() && pJson.isMember(pMasqueradingVector[4]))
+    {
+        dirtyFlag_[4] = true;
+        if(!pJson[pMasqueradingVector[4]].isNull())
+        {
+            auto timeStr = pJson[pMasqueradingVector[4]].asString();
+            struct tm stm;
+            memset(&stm,0,sizeof(stm));
+            auto p = strptime(timeStr.c_str(),"%Y-%m-%d %H:%M:%S",&stm);
+            time_t t = mktime(&stm);
+            size_t decimalNum = 0;
+            if(p)
+            {
+                if(*p=='.')
+                {
+                    std::string decimals(p+1,&timeStr[timeStr.length()]);
+                    while(decimals.length()<6)
+                    {
+                        decimals += "0";
+                    }
+                    decimalNum = (size_t)atol(decimals.c_str());
+                }
+                until_=std::make_shared<::trantor::Date>(t*1000000+decimalNum);
+            }
+        }
+    }
 }
 
 void Poll::updateByJson(const Json::Value &pJson) noexcept(false)
@@ -263,6 +388,32 @@ void Poll::updateByJson(const Json::Value &pJson) noexcept(false)
         {
             auto str = pJson["votes"].asString();
             votes_=std::make_shared<std::vector<char>>(drogon::utils::base64DecodeToVector(str));
+        }
+    }
+    if(pJson.isMember("until"))
+    {
+        dirtyFlag_[4] = true;
+        if(!pJson["until"].isNull())
+        {
+            auto timeStr = pJson["until"].asString();
+            struct tm stm;
+            memset(&stm,0,sizeof(stm));
+            auto p = strptime(timeStr.c_str(),"%Y-%m-%d %H:%M:%S",&stm);
+            time_t t = mktime(&stm);
+            size_t decimalNum = 0;
+            if(p)
+            {
+                if(*p=='.')
+                {
+                    std::string decimals(p+1,&timeStr[timeStr.length()]);
+                    while(decimals.length()<6)
+                    {
+                        decimals += "0";
+                    }
+                    decimalNum = (size_t)atol(decimals.c_str());
+                }
+                until_=std::make_shared<::trantor::Date>(t*1000000+decimalNum);
+            }
         }
     }
 }
@@ -384,6 +535,28 @@ void Poll::setVotesToNull() noexcept
     dirtyFlag_[3] = true;
 }
 
+const ::trantor::Date &Poll::getValueOfUntil() const noexcept
+{
+    const static ::trantor::Date defaultValue = ::trantor::Date();
+    if(until_)
+        return *until_;
+    return defaultValue;
+}
+const std::shared_ptr<::trantor::Date> &Poll::getUntil() const noexcept
+{
+    return until_;
+}
+void Poll::setUntil(const ::trantor::Date &pUntil) noexcept
+{
+    until_ = std::make_shared<::trantor::Date>(pUntil);
+    dirtyFlag_[4] = true;
+}
+void Poll::setUntilToNull() noexcept
+{
+    until_.reset();
+    dirtyFlag_[4] = true;
+}
+
 void Poll::updateId(const uint64_t id)
 {
 }
@@ -393,7 +566,8 @@ const std::vector<std::string> &Poll::insertColumns() noexcept
     static const std::vector<std::string> inCols={
         "title",
         "secretkey",
-        "votes"
+        "votes",
+        "until"
     };
     return inCols;
 }
@@ -433,6 +607,17 @@ void Poll::outputArgs(drogon::orm::internal::SqlBinder &binder) const
             binder << nullptr;
         }
     }
+    if(dirtyFlag_[4])
+    {
+        if(getUntil())
+        {
+            binder << getValueOfUntil();
+        }
+        else
+        {
+            binder << nullptr;
+        }
+    }
 }
 
 const std::vector<std::string> Poll::updateColumns() const
@@ -449,6 +634,10 @@ const std::vector<std::string> Poll::updateColumns() const
     if(dirtyFlag_[3])
     {
         ret.push_back(getColumnName(3));
+    }
+    if(dirtyFlag_[4])
+    {
+        ret.push_back(getColumnName(4));
     }
     return ret;
 }
@@ -482,6 +671,17 @@ void Poll::updateArgs(drogon::orm::internal::SqlBinder &binder) const
         if(getVotes())
         {
             binder << getValueOfVotes();
+        }
+        else
+        {
+            binder << nullptr;
+        }
+    }
+    if(dirtyFlag_[4])
+    {
+        if(getUntil())
+        {
+            binder << getValueOfUntil();
         }
         else
         {
@@ -524,6 +724,14 @@ Json::Value Poll::toJson() const
     {
         ret["votes"]=Json::Value();
     }
+    if(getUntil())
+    {
+        ret["until"]=getUntil()->toDbStringLocal();
+    }
+    else
+    {
+        ret["until"]=Json::Value();
+    }
     return ret;
 }
 
@@ -531,7 +739,7 @@ Json::Value Poll::toMasqueradedJson(
     const std::vector<std::string> &pMasqueradingVector) const
 {
     Json::Value ret;
-    if(pMasqueradingVector.size() == 4)
+    if(pMasqueradingVector.size() == 5)
     {
         if(!pMasqueradingVector[0].empty())
         {
@@ -577,6 +785,17 @@ Json::Value Poll::toMasqueradedJson(
                 ret[pMasqueradingVector[3]]=Json::Value();
             }
         }
+        if(!pMasqueradingVector[4].empty())
+        {
+            if(getUntil())
+            {
+                ret[pMasqueradingVector[4]]=getUntil()->toDbStringLocal();
+            }
+            else
+            {
+                ret[pMasqueradingVector[4]]=Json::Value();
+            }
+        }
         return ret;
     }
     LOG_ERROR << "Masquerade failed";
@@ -612,6 +831,14 @@ Json::Value Poll::toMasqueradedJson(
     {
         ret["votes"]=Json::Value();
     }
+    if(getUntil())
+    {
+        ret["until"]=getUntil()->toDbStringLocal();
+    }
+    else
+    {
+        ret["until"]=Json::Value();
+    }
     return ret;
 }
 
@@ -637,13 +864,18 @@ bool Poll::validateJsonForCreation(const Json::Value &pJson, std::string &err)
         if(!validJsonOfField(3, "votes", pJson["votes"], err, true))
             return false;
     }
+    if(pJson.isMember("until"))
+    {
+        if(!validJsonOfField(4, "until", pJson["until"], err, true))
+            return false;
+    }
     return true;
 }
 bool Poll::validateMasqueradedJsonForCreation(const Json::Value &pJson,
                                               const std::vector<std::string> &pMasqueradingVector,
                                               std::string &err)
 {
-    if(pMasqueradingVector.size() != 4)
+    if(pMasqueradingVector.size() != 5)
     {
         err = "Bad masquerading vector";
         return false;
@@ -678,6 +910,14 @@ bool Poll::validateMasqueradedJsonForCreation(const Json::Value &pJson,
           if(pJson.isMember(pMasqueradingVector[3]))
           {
               if(!validJsonOfField(3, pMasqueradingVector[3], pJson[pMasqueradingVector[3]], err, true))
+                  return false;
+          }
+      }
+      if(!pMasqueradingVector[4].empty())
+      {
+          if(pJson.isMember(pMasqueradingVector[4]))
+          {
+              if(!validJsonOfField(4, pMasqueradingVector[4], pJson[pMasqueradingVector[4]], err, true))
                   return false;
           }
       }
@@ -716,13 +956,18 @@ bool Poll::validateJsonForUpdate(const Json::Value &pJson, std::string &err)
         if(!validJsonOfField(3, "votes", pJson["votes"], err, false))
             return false;
     }
+    if(pJson.isMember("until"))
+    {
+        if(!validJsonOfField(4, "until", pJson["until"], err, false))
+            return false;
+    }
     return true;
 }
 bool Poll::validateMasqueradedJsonForUpdate(const Json::Value &pJson,
                                             const std::vector<std::string> &pMasqueradingVector,
                                             std::string &err)
 {
-    if(pMasqueradingVector.size() != 4)
+    if(pMasqueradingVector.size() != 5)
     {
         err = "Bad masquerading vector";
         return false;
@@ -751,6 +996,11 @@ bool Poll::validateMasqueradedJsonForUpdate(const Json::Value &pJson,
       if(!pMasqueradingVector[3].empty() && pJson.isMember(pMasqueradingVector[3]))
       {
           if(!validJsonOfField(3, pMasqueradingVector[3], pJson[pMasqueradingVector[3]], err, false))
+              return false;
+      }
+      if(!pMasqueradingVector[4].empty() && pJson.isMember(pMasqueradingVector[4]))
+      {
+          if(!validJsonOfField(4, pMasqueradingVector[4], pJson[pMasqueradingVector[4]], err, false))
               return false;
       }
     }
@@ -809,6 +1059,17 @@ bool Poll::validJsonOfField(size_t index,
             }
             break;
         case 3:
+            if(pJson.isNull())
+            {
+                return true;
+            }
+            if(!pJson.isString())
+            {
+                err="Type error in the "+fieldName+" field";
+                return false;
+            }
+            break;
+        case 4:
             if(pJson.isNull())
             {
                 return true;
