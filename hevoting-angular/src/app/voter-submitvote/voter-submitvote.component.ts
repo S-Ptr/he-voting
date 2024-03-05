@@ -64,7 +64,7 @@ export class VoterSubmitvoteComponent implements OnInit {
     const schemeType = seal.SchemeType.bgv
     const securityLevel = seal.SecurityLevel.tc128
     const polyModulusDegree = 4096
-    const bitSize = 32
+    const bitSize = 31
 
     const encParms = seal.EncryptionParameters(schemeType)
 

@@ -21,8 +21,6 @@
 #include <seal/keygenerator.h>
 #include <seal/batchencoder.h>
 
-
-
 #define VOTINGCONTROLLER_POLYMOD_DEGREE 4096
 
 using namespace drogon;
@@ -43,6 +41,7 @@ namespace heVote {
             ADD_METHOD_TO(VotingController::getAllPolls, "/get-all-polls", Get);
             ADD_METHOD_TO(VotingController::submitVoteTest, "/submit-vote-test", Post);
             ADD_METHOD_TO(VotingController::submitVote, "/submit-vote", Post);
+            ADD_METHOD_TO(VotingController::VotingNoiseTest, "/testing-some-stuff", Get);
         METHOD_LIST_END
             // your declaration of processing function maybe like this:
             // void get(const HttpRequestPtr& req, std::function<void (const HttpResponsePtr &)> &&callback, int p1, std::string p2);
@@ -62,6 +61,7 @@ namespace heVote {
             void results(const HttpRequestPtr& req, std::function<void (const HttpResponsePtr &)> &&callback, std::string votingId) const;
             void submitVoteTest(const HttpRequestPtr& req, std::function<void(const HttpResponsePtr&)>&& callback);
             void submitVote(const HttpRequestPtr& req, std::function<void(const HttpResponsePtr&)>&& callback);
+            void VotingNoiseTest(const HttpRequestPtr& req, std::function<void(const HttpResponsePtr&)>&& callback);
 
         VotingController();
         ~VotingController();

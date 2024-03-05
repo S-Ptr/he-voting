@@ -14,11 +14,17 @@ namespace heVote {
 		//********************************************
 		
 		//********************************************
+		// The plain modulus gives us the maximum number of votes a candidate can have. 
+		// Increasing it decreases the noise budget and increases the rate of it's consumption
 		// bit size of 32 enables support for up to 4,294,828,032 votes per candidate, which should be enough for anything that doesn't have 
-		// more than 50% of the world's population sharing the same opinion.
+		// more than 50% of the world's population sharing the same opinion. It's also a nice round computable number.
 		// 
-		// It's also a nice round computable number.
-		eParams->set_plain_modulus(seal::PlainModulus::Batching(VOTINGCONTROLLER_POLYMOD_DEGREE,32)); 
+		// Unfortunately, the noise budget afforded by that bit size isn't capable of handling the amount of votes. So we shall use 29 bits instead.
+		//
+		// After doing some calculations and running tests using the votingNoiseTest method, I'm going to use 31 bits.
+		// It hits that sweet spot where neither the plaintext values, nor the noise budget bring down one another, leading to a nice 2 billion-ish votes available.
+		// 
+		eParams->set_plain_modulus(seal::PlainModulus::Batching(VOTINGCONTROLLER_POLYMOD_DEGREE,31)); 
 		//********************************************
 
 
@@ -31,10 +37,10 @@ namespace heVote {
 		// 
 		// On the Microsoft SEAL GitHub page, among the examples,
 		// there is a table of maximum values for the coefficient modulus, relative to the poly modulus degree
-		//  +------------------------------------------------------+
-		//  | poly_modulus_degree | max coeff_modulus bit - length |
-		//  +-------------------- - +------------------------------+
-		//	| 1024				  |   27                           |
+		//	+------------------------------------------------------+
+		//	| poly_modulus_degree | max coeff_modulus bit - length |
+		//	+-------------------- - +------------------------------+
+		//	| 1024                |   27                           |
 		//	| 2048                |   54                           |
 		//	| 4096                |   109                          |
 		//	| 8192                |   218                          |
@@ -50,7 +56,8 @@ namespace heVote {
 		// 
 		// let's start with 60+48 = 108 => gives a noise budget of 18, not that great. Runtime ~20ms in preferred method, ~40ms in the test method
 		// 60+49 = 109 => gives a noise budget of 20, still not that great.
-		//36+36+36 = 108 => gives a noise budget of 32, which is better. Unfortunately, it increases elapsed time from 40-50ms to 100-110ms in the test method
+		// 36+36+36 = 108 => gives a noise budget of 32, which is better. Unfortunately, it increases elapsed time from 40-50ms to 100-110ms in the test method
+		// After figuring out that the coeff modulus also affects the noise budget, I managed to squeeze out 35 bits of noise budget by using 36+36+36
 
 		eParams->set_coeff_modulus(seal::CoeffModulus::Create(VOTINGCONTROLLER_POLYMOD_DEGREE, { 36,36,36 }));
 		//********************************************
@@ -68,7 +75,7 @@ namespace heVote {
 	}
 
 	void VotingController::createPoll(const HttpRequestPtr& req, std::function<void(const HttpResponsePtr&)>&& callback) {
-		//TODO: add asynchronicity and transaction
+		//TODO: add asynchronicity and transaction. Check out why the fuck it be bugging bro
 		//init JSON and extend callback lifetime
 		auto callbackPtr = std::make_shared<std::function<void(const HttpResponsePtr&)>>(std::move(callback));
 		auto& reqJson = *(req->getJsonObject());
@@ -212,7 +219,6 @@ namespace heVote {
 				},
 				ciphertextVotesVector, votingId);
 
-
 		}catch(const drogon::orm::DrogonDbException& e){
 			transaction->rollback();
 			LOG_ERROR << e.base().what();
@@ -294,7 +300,6 @@ namespace heVote {
 					std::cout << result[i] << "\n";
 				}
 
-
 				//seal::Serializable<seal::Ciphertext> ciphertextVotes2(ciphertextVotes);
 				std::stringstream().swap(strstream);
 				ciphertextVotes.save(strstream);
@@ -313,7 +318,7 @@ namespace heVote {
 						(*callbackPtr)(resp);
 					},
 					[=](const drogon::orm::DrogonDbException& e) {
-						LOG_ERROR << "error:" << e.base().what();
+						LOG_ERROR << e.base().what();
 						HttpResponsePtr resp = HttpResponse::newHttpResponse();
 						resp->setStatusCode(HttpStatusCode::k500InternalServerError);
 						(*callbackPtr)(resp);
@@ -327,7 +332,6 @@ namespace heVote {
 			}
 		);
 	}
-
 
 	void VotingController::getPoll(const HttpRequestPtr& req, std::function<void(const HttpResponsePtr&)>&& callback, std::string votingId) const {
 		
@@ -357,15 +361,24 @@ namespace heVote {
 							}
 							seal::SecretKey secretkey;
 							std::stringstream strstream;
-							std::string str(poll2.getValueOfSecretkey().begin(), poll2.getValueOfSecretkey().end());
-							strstream << str;
-							secretkey.load(*(this->context), strstream);
-							seal::KeyGenerator pubkeygen(*(this->context), secretkey);
-							std::stringstream().swap(strstream); //flush the contents of the stream
-							seal::Serializable<seal::PublicKey> publicKey = pubkeygen.create_public_key();
-							seal::PublicKey publicKey2;
-							pubkeygen.create_public_key(publicKey2);
-							publicKey.save(strstream);
+							try {
+								
+								std::string str(poll2.getValueOfSecretkey().begin(), poll2.getValueOfSecretkey().end());
+								strstream << str;
+								secretkey.load(*(this->context), strstream);
+								seal::KeyGenerator pubkeygen(*(this->context), secretkey);
+								std::stringstream().swap(strstream); //flush the contents of the stream
+								seal::Serializable<seal::PublicKey> publicKey = pubkeygen.create_public_key();
+								seal::PublicKey publicKey2;
+								pubkeygen.create_public_key(publicKey2);
+								publicKey.save(strstream);
+							}
+							catch (const std::exception& e) {
+								LOG_ERROR << e.what();
+								resp->setStatusCode(HttpStatusCode::k500InternalServerError);
+								(*callbackPtr)(resp);
+								return;
+							}
 
 							//base64
 
@@ -381,7 +394,10 @@ namespace heVote {
 							);
 
 							if (encoded_str_char == NULL) {
-								throw "Base64 Error: Failed to encode string";
+								LOG_ERROR << "Base64 Error: Failed to encode string";
+								auto resp = HttpResponse::newHttpResponse();
+								resp->setStatusCode(HttpStatusCode::k500InternalServerError);
+								(*callbackPtr)(resp);
 							}
 							
 							jsonBody["poll"]["secretkey"] = base64_str;
@@ -432,7 +448,6 @@ namespace heVote {
 		);
 	}
 
-
 	void VotingController::results(const HttpRequestPtr& req, std::function<void(const HttpResponsePtr&)>&& callback, std::string votingId) const {
 		//TODO: everything
 		int32_t votingId2 = std::stoi(votingId);
@@ -442,4 +457,67 @@ namespace heVote {
 	}
 
 
+	//Method for testing how many operations can a ciphertext take before it gets ruined
+	void VotingController::VotingNoiseTest(const HttpRequestPtr& req, std::function<void(const HttpResponsePtr&)>&& callback) {
+		auto callbackPtr = std::make_shared<std::function<void(const HttpResponsePtr&)>>(std::move(callback));
+		uint64_t count = 0;
+		int candidates = 20;
+
+		int polyModulusDegree = 4096;
+		seal::EncryptionParameters encParams1(seal::scheme_type::bgv);
+		encParams1.set_poly_modulus_degree(polyModulusDegree);
+		encParams1.set_plain_modulus(seal::PlainModulus::Batching(polyModulusDegree, 31));
+		encParams1.set_coeff_modulus(seal::CoeffModulus::Create(polyModulusDegree, { 36,36,36 }));
+		seal::SEALContext context1(encParams1);
+		seal::KeyGenerator keygen1(context1);
+		seal::Evaluator evaluator(context1);
+
+		seal::PublicKey publicKey1;
+		keygen1.create_public_key(publicKey1);
+		seal::Encryptor encryptor1(context1, publicKey1);
+		seal::Decryptor decryptor(context1, keygen1.secret_key());
+		seal::BatchEncoder encoder(context1);
+
+		seal::Ciphertext mainCiphertext;
+
+		std::vector<uint64_t>* votes = new std::vector(candidates, 0ULL);
+		seal::BatchEncoder batchEncoder(*(this->context));
+		seal::Plaintext zeroArrayPlain;
+		batchEncoder.encode(*votes, zeroArrayPlain);
+		delete votes;
+
+		encryptor1.encrypt(zeroArrayPlain, mainCiphertext);
+		LOG_INFO << "Polynomial modulus degree: " << polyModulusDegree;
+		LOG_INFO << "Plain modulus: " << encParams1.plain_modulus().value();
+		int noiseBudget = decryptor.invariant_noise_budget(mainCiphertext);
+		LOG_INFO << "Initial noise budget: " << noiseBudget;
+		unsigned long long worstEstimate = 2; 
+		for(int i = 2; i < noiseBudget; i++){
+			worstEstimate*=2;
+			worstEstimate--;
+		}
+		LOG_INFO << "Worst case estimate for how many votes we can support: " << worstEstimate;
+
+		seal::PublicKey publicKey;
+		keygen1.create_public_key(publicKey);
+		seal::Encryptor encryptor(context1, publicKey);
+		seal::Ciphertext ciphertext;
+		std::vector<uint64_t> votes1(candidates, 0ULL);
+		votes1[2] = 1;
+		seal::Plaintext voteArray;
+		batchEncoder.encode(votes1, voteArray);
+		encryptor.encrypt(zeroArrayPlain, ciphertext);
+		LOG_INFO << "Running simulation of voting: ";
+
+		while (decryptor.invariant_noise_budget(mainCiphertext) != 0) {
+			count++;
+			int before = decryptor.invariant_noise_budget(mainCiphertext);
+			evaluator.add_inplace(mainCiphertext, ciphertext);
+			int after = decryptor.invariant_noise_budget(mainCiphertext);
+			if(before !=after){
+				LOG_INFO << "On operation "<< count << " Noise budget decreased from " << before << " to " << after;
+			}
+		}
+		LOG_INFO << "Ciphertext unusable after " << count << " additions";
+	}
 }

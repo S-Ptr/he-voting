@@ -8,7 +8,7 @@ import { LoginComponent } from './login/login.component';
 import { AdminCreatepollComponent } from './admin-createpoll/admin-createpoll.component';
 import {ReactiveFormsModule} from '@angular/forms';
 
-import { FormsModule } from '@angular/forms';
+import { FormsModule, Validators, FormControl } from '@angular/forms';
 import { HttpClientModule } from '@angular/common/http';
 import { UserPollComponent } from './user-poll/user-poll.component';
 import { VoterMainComponent } from './voter-main/voter-main.component';
@@ -23,6 +23,9 @@ import {MatButtonModule} from '@angular/material/button';
 import {MatToolbarModule} from '@angular/material/toolbar';
 import {MatCheckboxModule} from '@angular/material/checkbox';
 import {MatProgressSpinnerModule} from '@angular/material/progress-spinner';
+import {MatFormFieldModule} from '@angular/material/form-field';
+import {MatInputModule} from '@angular/material/input';
+import {MatCardModule} from '@angular/material/card';
 
 
 @NgModule({
@@ -49,7 +52,11 @@ import {MatProgressSpinnerModule} from '@angular/material/progress-spinner';
     MatIconModule,
     MatToolbarModule,
     MatCheckboxModule,
-    MatProgressSpinnerModule
+    MatProgressSpinnerModule,
+    MatInputModule,
+    MatFormFieldModule,
+    MatCardModule,
+    
   ],
   providers: [],
   bootstrap: [AppComponent]

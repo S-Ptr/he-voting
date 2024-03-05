@@ -20,18 +20,23 @@ export class RegisterComponent {
 
 
   register() {
+    if(this.username == '' || this.pass == ''){
+      this.msg == 'Please fill out all fields'
+    }
 
     let data = {
       username:this.username,
       pass:this.pass
     }
 
-    this.userservice.login(data).subscribe((data:any) => {
-      if (data) {
-        window.sessionStorage.setItem("user", data.username)
+    this.userservice.register(data).subscribe((data:any) => {
+      if(data == null){
+        this.router.navigate(['/login']);
       }
-      else {
-        this.msg = 'Neispravno uneti podaci';
+      if(data.error){
+        this.msg = data.error;
+      }else{
+        this.router.navigate(['/login']);
       }
     })
 

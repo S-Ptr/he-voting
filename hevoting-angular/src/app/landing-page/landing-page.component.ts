@@ -11,7 +11,5 @@ export class LandingPageComponent {
 
   constructor(private route:Router){}
 
-  polls:any;
-
 
 }

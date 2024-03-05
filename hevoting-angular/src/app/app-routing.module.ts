@@ -18,6 +18,7 @@ const routes: Routes = [
   {path:'admin-register',component: AdminRegisterComponent},
   {path:'voter-main',component: VoterMainComponent},
   {path:'index',component: LandingPageComponent},
+  {path:'',component: LandingPageComponent},
 
 ];
 

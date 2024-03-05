@@ -34,7 +34,9 @@ int main() {
             resp->addHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
             resp->addHeader("Access-Control-Allow-Headers", "Content-Type");
         });
-
+    for(auto& listener : drogon::app().getListeners()){
+		LOG_INFO << "Listening on port" << listener.toPort();
+    }
     drogon::app().run();
     LOG_INFO << "Server shutting down. Hasta la vista!";
     return 0;

@@ -16,9 +16,49 @@ void UserController::login(const HttpRequestPtr& req, std::function<void(const H
 	auto& reqJson = *(req->getJsonObject());
 	std::string username = reqJson["username"].asString();
 	std::string pass = reqJson["pass"].asString();
-	LOG_INFO << "Login attempt by " << username;
+	
+	auto users = dbClient->execSqlAsyncFuture("SELECT username, pass FROM users WHERE username=$1",username);
+	
+	try {
+		auto result = users.get();
+		if (result.size() != 1) {
+			auto resp = HttpResponse::newHttpResponse();
+			resp->setStatusCode(HttpStatusCode::k500InternalServerError);
+			(*callbackPtr)(resp);
+			return;
+		}
+		auto user = result[0];
+		if (crypto_pwhash_argon2id_str_verify(user["pass"].c_str(), pass.c_str(), pass.length()) != 0) {
+			auto resp = HttpResponse::newHttpResponse();
+			resp->setStatusCode(HttpStatusCode::k401Unauthorized);
+			(*callbackPtr)(resp);
+		}
+		else {
+			req->session()->insert("user", username);
+			auto json = Json::Value();
+			json["user"] = username;
+			json["session_id"] = req->session()->sessionId();
+			auto resp = HttpResponse::newHttpJsonResponse(json);
+			resp->setStatusCode(HttpStatusCode::k200OK);
+			(*callbackPtr)(resp);
+		}
 
-	mapper.findOne(
+
+	}
+	catch(drogon::orm::UnexpectedRows){ // no user found
+		auto resp = HttpResponse::newHttpResponse();
+		resp->setStatusCode(HttpStatusCode::k204NoContent);
+		(*callbackPtr)(resp);
+		return;
+	} catch (drogon::orm::DrogonDbException& e){
+		LOG_ERROR << e.base().what();
+		LOG_ERROR << typeid(e).name();
+		auto resp = HttpResponse::newHttpResponse();
+		resp->setStatusCode(HttpStatusCode::k500InternalServerError);
+		(*callbackPtr)(resp);
+		return;
+	}
+	/*mapper.findOne(
 		drogon::orm::Criteria(drogon_model::votingregister::Users::Cols::_username, drogon::orm::CompareOperator::EQ, username),
 		[=](const drogon_model::votingregister::Users& user) {
 			if (crypto_pwhash_argon2id_str_verify(user.getValueOfPass().c_str(), pass.c_str(), pass.length()) != 0) {
@@ -36,12 +76,12 @@ void UserController::login(const HttpRequestPtr& req, std::function<void(const H
 			}
 		},
 		[callbackPtr](const drogon::orm::DrogonDbException& e) {
-			LOG_ERROR << e.base().what();
+			LOG_ERROR << typeid(e).name();
 			auto resp = HttpResponse::newHttpResponse();
 			resp->setStatusCode(HttpStatusCode::k500InternalServerError);
 			(*callbackPtr)(resp);
 		}
-	);
+	);*/
 }
 
 void UserController::adminLogin(const HttpRequestPtr& req, std::function<void(const HttpResponsePtr&)>&& callback)
@@ -51,7 +91,6 @@ void UserController::adminLogin(const HttpRequestPtr& req, std::function<void(co
 	auto& reqJson = *(req->getJsonObject());
 	std::string username = reqJson["username"].asString();
 	std::string pass = reqJson["pass"].asString();
-	LOG_INFO << "Login attempt by " << username;
 
 	mapper.findOne(
 		drogon::orm::Criteria(drogon_model::votingregister::Admins::Cols::_username, drogon::orm::CompareOperator::EQ, username),
@@ -88,16 +127,56 @@ void UserController::registerUser(const HttpRequestPtr& req, std::function<void(
 	std::string username = reqJson["username"].asString();
 	std::string pass = reqJson["pass"].asString();
 
+	auto users = dbClient->execSqlAsyncFuture("SELECT username, pass FROM users WHERE username=$1",username);
+	
+	try {
+		auto result = users.get();
+		if (result.size() != 1) {
+			auto resp = HttpResponse::newHttpResponse();
+			resp->setStatusCode(HttpStatusCode::k500InternalServerError);
+			(*callbackPtr)(resp);
+			return;
+		}
+		auto user = result[0];
+		if (crypto_pwhash_argon2id_str_verify(user["pass"].c_str(), pass.c_str(), pass.length()) != 0) {
+			auto resp = HttpResponse::newHttpResponse();
+			resp->setStatusCode(HttpStatusCode::k401Unauthorized);
+			(*callbackPtr)(resp);
+		}
+		else {
+			req->session()->insert("user", username);
+			auto json = Json::Value();
+			json["user"] = username;
+			json["session_id"] = req->session()->sessionId();
+			auto resp = HttpResponse::newHttpJsonResponse(json);
+			resp->setStatusCode(HttpStatusCode::k200OK);
+			(*callbackPtr)(resp);
+		}
 
+
+	}
+	catch(drogon::orm::UnexpectedRows){ // no user found
+		auto resp = HttpResponse::newHttpResponse();
+		resp->setStatusCode(HttpStatusCode::k204NoContent);
+		(*callbackPtr)(resp);
+		return;
+	} catch (drogon::orm::DrogonDbException& e){
+		LOG_ERROR << e.base().what();
+		LOG_ERROR << typeid(e).name();
+		auto resp = HttpResponse::newHttpResponse();
+		resp->setStatusCode(HttpStatusCode::k500InternalServerError);
+		(*callbackPtr)(resp);
+		return;
+	}
 
 	mapper.findBy( //easier to check if user exists this way than with findOne
 		drogon::orm::Criteria(drogon_model::votingregister::Users::Cols::_username, drogon::orm::CompareOperator::EQ, username),
-		[&mapper, &callbackPtr, username, pass](const std::vector<drogon_model::votingregister::Users>& users) {
+		[=](const std::vector<drogon_model::votingregister::Users>& users) {
 			if(users.empty()){
 				char hashpass[crypto_pwhash_argon2id_STRBYTES];
 				unsigned char salt[crypto_pwhash_argon2id_SALTBYTES];
 				randombytes_buf(salt, sizeof(salt));
-
+				auto mapper = drogon::orm::Mapper<drogon_model::votingregister::Users>(dbClient);
 				drogon_model::votingregister::Users newUser;
 				newUser.setUsername(username);
 
@@ -110,13 +189,14 @@ void UserController::registerUser(const HttpRequestPtr& req, std::function<void(
 				}
 				std::string hashpassStr(hashpass);
 				newUser.setPass(hashpassStr);
+				
 				mapper.insert(newUser,
-					[&callbackPtr](const drogon_model::votingregister::Users& user) {
+					[=](const drogon_model::votingregister::Users& user) {
 						auto resp = HttpResponse::newHttpResponse();
 						resp->setStatusCode(HttpStatusCode::k201Created);
 						(*callbackPtr)(resp);
 					},
-					[&callbackPtr](const drogon::orm::DrogonDbException& e) {
+					[=](const drogon::orm::DrogonDbException& e) {
 						LOG_ERROR << e.base().what();
 						auto resp = HttpResponse::newHttpResponse();
 						resp->setStatusCode(HttpStatusCode::k500InternalServerError);
@@ -124,13 +204,17 @@ void UserController::registerUser(const HttpRequestPtr& req, std::function<void(
 					}
 					);
 			}else {
-				auto resp = HttpResponse::newHttpResponse();
-				resp->setStatusCode(HttpStatusCode::k406NotAcceptable);
+				Json::Value body;
+				body["error"] = "User already exists";
+				auto resp = HttpResponse::newHttpJsonResponse(body);
+
+				resp->setStatusCode(HttpStatusCode::k200OK);
 				(*callbackPtr)(resp);
 			}
 		},
 		[callbackPtr](const drogon::orm::DrogonDbException& e) {
 			LOG_ERROR << e.base().what();
+			LOG_ERROR<< typeid(e).name();
 			auto resp = HttpResponse::newHttpResponse();
 			resp->setStatusCode(HttpStatusCode::k500InternalServerError);
 			(*callbackPtr)(resp);

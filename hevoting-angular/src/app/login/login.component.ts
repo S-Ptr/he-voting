@@ -18,6 +18,7 @@ export class LoginComponent implements OnInit {
   username: string = ""
   pass: string = ""
   msg: string = ""
+  hide:boolean = true;
 
 
   PrijaviSe() {
@@ -30,6 +31,7 @@ export class LoginComponent implements OnInit {
     this.userservice.login(data).subscribe((data:any) => {
       if (data) {
         window.sessionStorage.setItem("user", data.username)
+        this.router.navigate(['/voter-main']);
       }
       else {
         this.msg = 'Neispravno uneti podaci';

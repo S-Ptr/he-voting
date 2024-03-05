@@ -23,4 +23,11 @@ export class UserService {
     
     return this.http.post(`${this.uri}/admin-login`,data);
   }
+
+  register(data: any){
+
+    const headers = new HttpHeaders({ 'Content-Type': 'application/json' });
+    
+    return this.http.post(`${this.uri}/register`,data);
+  }
 }
