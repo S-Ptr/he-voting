@@ -10,7 +10,6 @@ import {ReactiveFormsModule} from '@angular/forms';
 
 import { FormsModule, Validators, FormControl } from '@angular/forms';
 import { HttpClientModule } from '@angular/common/http';
-import { UserPollComponent } from './user-poll/user-poll.component';
 import { VoterMainComponent } from './voter-main/voter-main.component';
 import { AdminLoginComponent } from './admin-login/admin-login.component';
 import { RegisterComponent } from './register/register.component';
@@ -26,7 +25,9 @@ import {MatProgressSpinnerModule} from '@angular/material/progress-spinner';
 import {MatFormFieldModule} from '@angular/material/form-field';
 import {MatInputModule} from '@angular/material/input';
 import {MatCardModule} from '@angular/material/card';
+import {MatSnackBarModule} from '@angular/material/snack-bar';
 
+import {ClipboardModule} from '@angular/cdk/clipboard';
 
 @NgModule({
   declarations: [
@@ -34,7 +35,6 @@ import {MatCardModule} from '@angular/material/card';
     VoterSubmitvoteComponent,
     LoginComponent,
     AdminCreatepollComponent,
-    UserPollComponent,
     VoterMainComponent,
     AdminLoginComponent,
     RegisterComponent,
@@ -56,7 +56,8 @@ import {MatCardModule} from '@angular/material/card';
     MatInputModule,
     MatFormFieldModule,
     MatCardModule,
-    
+    MatSnackBarModule,
+    ClipboardModule,
   ],
   providers: [],
   bootstrap: [AppComponent]

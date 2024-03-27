@@ -17,7 +17,8 @@ const std::string Poll::Cols::_id = "id";
 const std::string Poll::Cols::_title = "title";
 const std::string Poll::Cols::_secretkey = "secretkey";
 const std::string Poll::Cols::_votes = "votes";
-const std::string Poll::Cols::_until = "until";
+const std::string Poll::Cols::_lasts_until = "lasts_until";
+const std::string Poll::Cols::_lasts_from = "lasts_from";
 const std::string Poll::primaryKeyName = "id";
 const bool Poll::hasPrimaryKey = true;
 const std::string Poll::tableName = "poll";
@@ -27,7 +28,8 @@ const std::vector<typename Poll::MetaData> Poll::metaData_={
 {"title","std::string","text",0,0,0,0},
 {"secretkey","std::vector<char>","bytea",0,0,0,0},
 {"votes","std::vector<char>","bytea",0,0,0,0},
-{"until","::trantor::Date","timestamp without time zone",0,0,0,0}
+{"lasts_until","::trantor::Date","timestamp without time zone",0,0,0,0},
+{"lasts_from","::trantor::Date","timestamp without time zone",0,0,0,0}
 };
 const std::string &Poll::getColumnName(size_t index) noexcept(false)
 {
@@ -64,9 +66,9 @@ Poll::Poll(const Row &r, const ssize_t indexOffset) noexcept
                 votes_=std::make_shared<std::vector<char>>(drogon::utils::hexToBinaryVector(str.data()+2,str.length()-2));
             }
         }
-        if(!r["until"].isNull())
+        if(!r["lasts_until"].isNull())
         {
-            auto timeStr = r["until"].as<std::string>();
+            auto timeStr = r["lasts_until"].as<std::string>();
             struct tm stm;
             memset(&stm,0,sizeof(stm));
             auto p = strptime(timeStr.c_str(),"%Y-%m-%d %H:%M:%S",&stm);
@@ -83,14 +85,36 @@ Poll::Poll(const Row &r, const ssize_t indexOffset) noexcept
                     }
                     decimalNum = (size_t)atol(decimals.c_str());
                 }
-                until_=std::make_shared<::trantor::Date>(t*1000000+decimalNum);
+                lastsUntil_=std::make_shared<::trantor::Date>(t*1000000+decimalNum);
+            }
+        }
+        if(!r["lasts_from"].isNull())
+        {
+            auto timeStr = r["lasts_from"].as<std::string>();
+            struct tm stm;
+            memset(&stm,0,sizeof(stm));
+            auto p = strptime(timeStr.c_str(),"%Y-%m-%d %H:%M:%S",&stm);
+            time_t t = mktime(&stm);
+            size_t decimalNum = 0;
+            if(p)
+            {
+                if(*p=='.')
+                {
+                    std::string decimals(p+1,&timeStr[timeStr.length()]);
+                    while(decimals.length()<6)
+                    {
+                        decimals += "0";
+                    }
+                    decimalNum = (size_t)atol(decimals.c_str());
+                }
+                lastsFrom_=std::make_shared<::trantor::Date>(t*1000000+decimalNum);
             }
         }
     }
     else
     {
         size_t offset = (size_t)indexOffset;
-        if(offset + 5 > r.size())
+        if(offset + 6 > r.size())
         {
             LOG_FATAL << "Invalid SQL result for this model";
             return;
@@ -146,7 +170,30 @@ Poll::Poll(const Row &r, const ssize_t indexOffset) noexcept
                     }
                     decimalNum = (size_t)atol(decimals.c_str());
                 }
-                until_=std::make_shared<::trantor::Date>(t*1000000+decimalNum);
+                lastsUntil_=std::make_shared<::trantor::Date>(t*1000000+decimalNum);
+            }
+        }
+        index = offset + 5;
+        if(!r[index].isNull())
+        {
+            auto timeStr = r[index].as<std::string>();
+            struct tm stm;
+            memset(&stm,0,sizeof(stm));
+            auto p = strptime(timeStr.c_str(),"%Y-%m-%d %H:%M:%S",&stm);
+            time_t t = mktime(&stm);
+            size_t decimalNum = 0;
+            if(p)
+            {
+                if(*p=='.')
+                {
+                    std::string decimals(p+1,&timeStr[timeStr.length()]);
+                    while(decimals.length()<6)
+                    {
+                        decimals += "0";
+                    }
+                    decimalNum = (size_t)atol(decimals.c_str());
+                }
+                lastsFrom_=std::make_shared<::trantor::Date>(t*1000000+decimalNum);
             }
         }
     }
@@ -155,7 +202,7 @@ Poll::Poll(const Row &r, const ssize_t indexOffset) noexcept
 
 Poll::Poll(const Json::Value &pJson, const std::vector<std::string> &pMasqueradingVector) noexcept(false)
 {
-    if(pMasqueradingVector.size() != 5)
+    if(pMasqueradingVector.size() != 6)
     {
         LOG_ERROR << "Bad masquerading vector";
         return;
@@ -216,7 +263,33 @@ Poll::Poll(const Json::Value &pJson, const std::vector<std::string> &pMasqueradi
                     }
                     decimalNum = (size_t)atol(decimals.c_str());
                 }
-                until_=std::make_shared<::trantor::Date>(t*1000000+decimalNum);
+                lastsUntil_=std::make_shared<::trantor::Date>(t*1000000+decimalNum);
+            }
+        }
+    }
+    if(!pMasqueradingVector[5].empty() && pJson.isMember(pMasqueradingVector[5]))
+    {
+        dirtyFlag_[5] = true;
+        if(!pJson[pMasqueradingVector[5]].isNull())
+        {
+            auto timeStr = pJson[pMasqueradingVector[5]].asString();
+            struct tm stm;
+            memset(&stm,0,sizeof(stm));
+            auto p = strptime(timeStr.c_str(),"%Y-%m-%d %H:%M:%S",&stm);
+            time_t t = mktime(&stm);
+            size_t decimalNum = 0;
+            if(p)
+            {
+                if(*p=='.')
+                {
+                    std::string decimals(p+1,&timeStr[timeStr.length()]);
+                    while(decimals.length()<6)
+                    {
+                        decimals += "0";
+                    }
+                    decimalNum = (size_t)atol(decimals.c_str());
+                }
+                lastsFrom_=std::make_shared<::trantor::Date>(t*1000000+decimalNum);
             }
         }
     }
@@ -258,12 +331,12 @@ Poll::Poll(const Json::Value &pJson) noexcept(false)
             votes_=std::make_shared<std::vector<char>>(drogon::utils::base64DecodeToVector(str));
         }
     }
-    if(pJson.isMember("until"))
+    if(pJson.isMember("lasts_until"))
     {
         dirtyFlag_[4]=true;
-        if(!pJson["until"].isNull())
+        if(!pJson["lasts_until"].isNull())
         {
-            auto timeStr = pJson["until"].asString();
+            auto timeStr = pJson["lasts_until"].asString();
             struct tm stm;
             memset(&stm,0,sizeof(stm));
             auto p = strptime(timeStr.c_str(),"%Y-%m-%d %H:%M:%S",&stm);
@@ -280,7 +353,33 @@ Poll::Poll(const Json::Value &pJson) noexcept(false)
                     }
                     decimalNum = (size_t)atol(decimals.c_str());
                 }
-                until_=std::make_shared<::trantor::Date>(t*1000000+decimalNum);
+                lastsUntil_=std::make_shared<::trantor::Date>(t*1000000+decimalNum);
+            }
+        }
+    }
+    if(pJson.isMember("lasts_from"))
+    {
+        dirtyFlag_[5]=true;
+        if(!pJson["lasts_from"].isNull())
+        {
+            auto timeStr = pJson["lasts_from"].asString();
+            struct tm stm;
+            memset(&stm,0,sizeof(stm));
+            auto p = strptime(timeStr.c_str(),"%Y-%m-%d %H:%M:%S",&stm);
+            time_t t = mktime(&stm);
+            size_t decimalNum = 0;
+            if(p)
+            {
+                if(*p=='.')
+                {
+                    std::string decimals(p+1,&timeStr[timeStr.length()]);
+                    while(decimals.length()<6)
+                    {
+                        decimals += "0";
+                    }
+                    decimalNum = (size_t)atol(decimals.c_str());
+                }
+                lastsFrom_=std::make_shared<::trantor::Date>(t*1000000+decimalNum);
             }
         }
     }
@@ -289,7 +388,7 @@ Poll::Poll(const Json::Value &pJson) noexcept(false)
 void Poll::updateByMasqueradedJson(const Json::Value &pJson,
                                             const std::vector<std::string> &pMasqueradingVector) noexcept(false)
 {
-    if(pMasqueradingVector.size() != 5)
+    if(pMasqueradingVector.size() != 6)
     {
         LOG_ERROR << "Bad masquerading vector";
         return;
@@ -349,7 +448,33 @@ void Poll::updateByMasqueradedJson(const Json::Value &pJson,
                     }
                     decimalNum = (size_t)atol(decimals.c_str());
                 }
-                until_=std::make_shared<::trantor::Date>(t*1000000+decimalNum);
+                lastsUntil_=std::make_shared<::trantor::Date>(t*1000000+decimalNum);
+            }
+        }
+    }
+    if(!pMasqueradingVector[5].empty() && pJson.isMember(pMasqueradingVector[5]))
+    {
+        dirtyFlag_[5] = true;
+        if(!pJson[pMasqueradingVector[5]].isNull())
+        {
+            auto timeStr = pJson[pMasqueradingVector[5]].asString();
+            struct tm stm;
+            memset(&stm,0,sizeof(stm));
+            auto p = strptime(timeStr.c_str(),"%Y-%m-%d %H:%M:%S",&stm);
+            time_t t = mktime(&stm);
+            size_t decimalNum = 0;
+            if(p)
+            {
+                if(*p=='.')
+                {
+                    std::string decimals(p+1,&timeStr[timeStr.length()]);
+                    while(decimals.length()<6)
+                    {
+                        decimals += "0";
+                    }
+                    decimalNum = (size_t)atol(decimals.c_str());
+                }
+                lastsFrom_=std::make_shared<::trantor::Date>(t*1000000+decimalNum);
             }
         }
     }
@@ -390,12 +515,12 @@ void Poll::updateByJson(const Json::Value &pJson) noexcept(false)
             votes_=std::make_shared<std::vector<char>>(drogon::utils::base64DecodeToVector(str));
         }
     }
-    if(pJson.isMember("until"))
+    if(pJson.isMember("lasts_until"))
     {
         dirtyFlag_[4] = true;
-        if(!pJson["until"].isNull())
+        if(!pJson["lasts_until"].isNull())
         {
-            auto timeStr = pJson["until"].asString();
+            auto timeStr = pJson["lasts_until"].asString();
             struct tm stm;
             memset(&stm,0,sizeof(stm));
             auto p = strptime(timeStr.c_str(),"%Y-%m-%d %H:%M:%S",&stm);
@@ -412,7 +537,33 @@ void Poll::updateByJson(const Json::Value &pJson) noexcept(false)
                     }
                     decimalNum = (size_t)atol(decimals.c_str());
                 }
-                until_=std::make_shared<::trantor::Date>(t*1000000+decimalNum);
+                lastsUntil_=std::make_shared<::trantor::Date>(t*1000000+decimalNum);
+            }
+        }
+    }
+    if(pJson.isMember("lasts_from"))
+    {
+        dirtyFlag_[5] = true;
+        if(!pJson["lasts_from"].isNull())
+        {
+            auto timeStr = pJson["lasts_from"].asString();
+            struct tm stm;
+            memset(&stm,0,sizeof(stm));
+            auto p = strptime(timeStr.c_str(),"%Y-%m-%d %H:%M:%S",&stm);
+            time_t t = mktime(&stm);
+            size_t decimalNum = 0;
+            if(p)
+            {
+                if(*p=='.')
+                {
+                    std::string decimals(p+1,&timeStr[timeStr.length()]);
+                    while(decimals.length()<6)
+                    {
+                        decimals += "0";
+                    }
+                    decimalNum = (size_t)atol(decimals.c_str());
+                }
+                lastsFrom_=std::make_shared<::trantor::Date>(t*1000000+decimalNum);
             }
         }
     }
@@ -535,26 +686,48 @@ void Poll::setVotesToNull() noexcept
     dirtyFlag_[3] = true;
 }
 
-const ::trantor::Date &Poll::getValueOfUntil() const noexcept
+const ::trantor::Date &Poll::getValueOfLastsUntil() const noexcept
 {
     const static ::trantor::Date defaultValue = ::trantor::Date();
-    if(until_)
-        return *until_;
+    if(lastsUntil_)
+        return *lastsUntil_;
     return defaultValue;
 }
-const std::shared_ptr<::trantor::Date> &Poll::getUntil() const noexcept
+const std::shared_ptr<::trantor::Date> &Poll::getLastsUntil() const noexcept
 {
-    return until_;
+    return lastsUntil_;
 }
-void Poll::setUntil(const ::trantor::Date &pUntil) noexcept
+void Poll::setLastsUntil(const ::trantor::Date &pLastsUntil) noexcept
 {
-    until_ = std::make_shared<::trantor::Date>(pUntil);
+    lastsUntil_ = std::make_shared<::trantor::Date>(pLastsUntil);
     dirtyFlag_[4] = true;
 }
-void Poll::setUntilToNull() noexcept
+void Poll::setLastsUntilToNull() noexcept
 {
-    until_.reset();
+    lastsUntil_.reset();
     dirtyFlag_[4] = true;
+}
+
+const ::trantor::Date &Poll::getValueOfLastsFrom() const noexcept
+{
+    const static ::trantor::Date defaultValue = ::trantor::Date();
+    if(lastsFrom_)
+        return *lastsFrom_;
+    return defaultValue;
+}
+const std::shared_ptr<::trantor::Date> &Poll::getLastsFrom() const noexcept
+{
+    return lastsFrom_;
+}
+void Poll::setLastsFrom(const ::trantor::Date &pLastsFrom) noexcept
+{
+    lastsFrom_ = std::make_shared<::trantor::Date>(pLastsFrom);
+    dirtyFlag_[5] = true;
+}
+void Poll::setLastsFromToNull() noexcept
+{
+    lastsFrom_.reset();
+    dirtyFlag_[5] = true;
 }
 
 void Poll::updateId(const uint64_t id)
@@ -567,7 +740,8 @@ const std::vector<std::string> &Poll::insertColumns() noexcept
         "title",
         "secretkey",
         "votes",
-        "until"
+        "lasts_until",
+        "lasts_from"
     };
     return inCols;
 }
@@ -609,9 +783,20 @@ void Poll::outputArgs(drogon::orm::internal::SqlBinder &binder) const
     }
     if(dirtyFlag_[4])
     {
-        if(getUntil())
+        if(getLastsUntil())
         {
-            binder << getValueOfUntil();
+            binder << getValueOfLastsUntil();
+        }
+        else
+        {
+            binder << nullptr;
+        }
+    }
+    if(dirtyFlag_[5])
+    {
+        if(getLastsFrom())
+        {
+            binder << getValueOfLastsFrom();
         }
         else
         {
@@ -638,6 +823,10 @@ const std::vector<std::string> Poll::updateColumns() const
     if(dirtyFlag_[4])
     {
         ret.push_back(getColumnName(4));
+    }
+    if(dirtyFlag_[5])
+    {
+        ret.push_back(getColumnName(5));
     }
     return ret;
 }
@@ -679,9 +868,20 @@ void Poll::updateArgs(drogon::orm::internal::SqlBinder &binder) const
     }
     if(dirtyFlag_[4])
     {
-        if(getUntil())
+        if(getLastsUntil())
         {
-            binder << getValueOfUntil();
+            binder << getValueOfLastsUntil();
+        }
+        else
+        {
+            binder << nullptr;
+        }
+    }
+    if(dirtyFlag_[5])
+    {
+        if(getLastsFrom())
+        {
+            binder << getValueOfLastsFrom();
         }
         else
         {
@@ -724,13 +924,21 @@ Json::Value Poll::toJson() const
     {
         ret["votes"]=Json::Value();
     }
-    if(getUntil())
+    if(getLastsUntil())
     {
-        ret["until"]=getUntil()->toDbStringLocal();
+        ret["lasts_until"]=getLastsUntil()->toDbStringLocal();
     }
     else
     {
-        ret["until"]=Json::Value();
+        ret["lasts_until"]=Json::Value();
+    }
+    if(getLastsFrom())
+    {
+        ret["lasts_from"]=getLastsFrom()->toDbStringLocal();
+    }
+    else
+    {
+        ret["lasts_from"]=Json::Value();
     }
     return ret;
 }
@@ -739,7 +947,7 @@ Json::Value Poll::toMasqueradedJson(
     const std::vector<std::string> &pMasqueradingVector) const
 {
     Json::Value ret;
-    if(pMasqueradingVector.size() == 5)
+    if(pMasqueradingVector.size() == 6)
     {
         if(!pMasqueradingVector[0].empty())
         {
@@ -787,13 +995,24 @@ Json::Value Poll::toMasqueradedJson(
         }
         if(!pMasqueradingVector[4].empty())
         {
-            if(getUntil())
+            if(getLastsUntil())
             {
-                ret[pMasqueradingVector[4]]=getUntil()->toDbStringLocal();
+                ret[pMasqueradingVector[4]]=getLastsUntil()->toDbStringLocal();
             }
             else
             {
                 ret[pMasqueradingVector[4]]=Json::Value();
+            }
+        }
+        if(!pMasqueradingVector[5].empty())
+        {
+            if(getLastsFrom())
+            {
+                ret[pMasqueradingVector[5]]=getLastsFrom()->toDbStringLocal();
+            }
+            else
+            {
+                ret[pMasqueradingVector[5]]=Json::Value();
             }
         }
         return ret;
@@ -831,13 +1050,21 @@ Json::Value Poll::toMasqueradedJson(
     {
         ret["votes"]=Json::Value();
     }
-    if(getUntil())
+    if(getLastsUntil())
     {
-        ret["until"]=getUntil()->toDbStringLocal();
+        ret["lasts_until"]=getLastsUntil()->toDbStringLocal();
     }
     else
     {
-        ret["until"]=Json::Value();
+        ret["lasts_until"]=Json::Value();
+    }
+    if(getLastsFrom())
+    {
+        ret["lasts_from"]=getLastsFrom()->toDbStringLocal();
+    }
+    else
+    {
+        ret["lasts_from"]=Json::Value();
     }
     return ret;
 }
@@ -864,9 +1091,14 @@ bool Poll::validateJsonForCreation(const Json::Value &pJson, std::string &err)
         if(!validJsonOfField(3, "votes", pJson["votes"], err, true))
             return false;
     }
-    if(pJson.isMember("until"))
+    if(pJson.isMember("lasts_until"))
     {
-        if(!validJsonOfField(4, "until", pJson["until"], err, true))
+        if(!validJsonOfField(4, "lasts_until", pJson["lasts_until"], err, true))
+            return false;
+    }
+    if(pJson.isMember("lasts_from"))
+    {
+        if(!validJsonOfField(5, "lasts_from", pJson["lasts_from"], err, true))
             return false;
     }
     return true;
@@ -875,7 +1107,7 @@ bool Poll::validateMasqueradedJsonForCreation(const Json::Value &pJson,
                                               const std::vector<std::string> &pMasqueradingVector,
                                               std::string &err)
 {
-    if(pMasqueradingVector.size() != 5)
+    if(pMasqueradingVector.size() != 6)
     {
         err = "Bad masquerading vector";
         return false;
@@ -921,6 +1153,14 @@ bool Poll::validateMasqueradedJsonForCreation(const Json::Value &pJson,
                   return false;
           }
       }
+      if(!pMasqueradingVector[5].empty())
+      {
+          if(pJson.isMember(pMasqueradingVector[5]))
+          {
+              if(!validJsonOfField(5, pMasqueradingVector[5], pJson[pMasqueradingVector[5]], err, true))
+                  return false;
+          }
+      }
     }
     catch(const Json::LogicError &e)
     {
@@ -956,9 +1196,14 @@ bool Poll::validateJsonForUpdate(const Json::Value &pJson, std::string &err)
         if(!validJsonOfField(3, "votes", pJson["votes"], err, false))
             return false;
     }
-    if(pJson.isMember("until"))
+    if(pJson.isMember("lasts_until"))
     {
-        if(!validJsonOfField(4, "until", pJson["until"], err, false))
+        if(!validJsonOfField(4, "lasts_until", pJson["lasts_until"], err, false))
+            return false;
+    }
+    if(pJson.isMember("lasts_from"))
+    {
+        if(!validJsonOfField(5, "lasts_from", pJson["lasts_from"], err, false))
             return false;
     }
     return true;
@@ -967,7 +1212,7 @@ bool Poll::validateMasqueradedJsonForUpdate(const Json::Value &pJson,
                                             const std::vector<std::string> &pMasqueradingVector,
                                             std::string &err)
 {
-    if(pMasqueradingVector.size() != 5)
+    if(pMasqueradingVector.size() != 6)
     {
         err = "Bad masquerading vector";
         return false;
@@ -1001,6 +1246,11 @@ bool Poll::validateMasqueradedJsonForUpdate(const Json::Value &pJson,
       if(!pMasqueradingVector[4].empty() && pJson.isMember(pMasqueradingVector[4]))
       {
           if(!validJsonOfField(4, pMasqueradingVector[4], pJson[pMasqueradingVector[4]], err, false))
+              return false;
+      }
+      if(!pMasqueradingVector[5].empty() && pJson.isMember(pMasqueradingVector[5]))
+      {
+          if(!validJsonOfField(5, pMasqueradingVector[5], pJson[pMasqueradingVector[5]], err, false))
               return false;
       }
     }
@@ -1070,6 +1320,17 @@ bool Poll::validJsonOfField(size_t index,
             }
             break;
         case 4:
+            if(pJson.isNull())
+            {
+                return true;
+            }
+            if(!pJson.isString())
+            {
+                err="Type error in the "+fieldName+" field";
+                return false;
+            }
+            break;
+        case 5:
             if(pJson.isNull())
             {
                 return true;

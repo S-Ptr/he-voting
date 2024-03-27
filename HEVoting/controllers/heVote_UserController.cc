@@ -21,16 +21,20 @@ void UserController::login(const HttpRequestPtr& req, std::function<void(const H
 	
 	try {
 		auto result = users.get();
-		if (result.size() != 1) {
-			auto resp = HttpResponse::newHttpResponse();
-			resp->setStatusCode(HttpStatusCode::k500InternalServerError);
+		if (result.size() == 0) {
+			auto json = Json::Value();
+			json["error"] = "No user found";
+			auto resp = HttpResponse::newHttpJsonResponse(json);
+			resp->setStatusCode(HttpStatusCode::k204NoContent);
 			(*callbackPtr)(resp);
 			return;
 		}
 		auto user = result[0];
 		if (crypto_pwhash_argon2id_str_verify(user["pass"].c_str(), pass.c_str(), pass.length()) != 0) {
-			auto resp = HttpResponse::newHttpResponse();
-			resp->setStatusCode(HttpStatusCode::k401Unauthorized);
+			auto json = Json::Value();
+			json["error"] = "Invalid password";
+			auto resp = HttpResponse::newHttpJsonResponse(json);
+			resp->setStatusCode(HttpStatusCode::k200OK);
 			(*callbackPtr)(resp);
 		}
 		else {
@@ -45,8 +49,10 @@ void UserController::login(const HttpRequestPtr& req, std::function<void(const H
 
 
 	}
-	catch(drogon::orm::UnexpectedRows){ // no user found
-		auto resp = HttpResponse::newHttpResponse();
+	catch(drogon::orm::UnexpectedRows& e){ // no user found
+		auto json = Json::Value();
+		json["error"] = "No user found";
+		auto resp = HttpResponse::newHttpJsonResponse(json);
 		resp->setStatusCode(HttpStatusCode::k204NoContent);
 		(*callbackPtr)(resp);
 		return;
@@ -58,64 +64,64 @@ void UserController::login(const HttpRequestPtr& req, std::function<void(const H
 		(*callbackPtr)(resp);
 		return;
 	}
-	/*mapper.findOne(
-		drogon::orm::Criteria(drogon_model::votingregister::Users::Cols::_username, drogon::orm::CompareOperator::EQ, username),
-		[=](const drogon_model::votingregister::Users& user) {
-			if (crypto_pwhash_argon2id_str_verify(user.getValueOfPass().c_str(), pass.c_str(), pass.length()) != 0) {
-				auto resp = HttpResponse::newHttpResponse();
-				resp->setStatusCode(HttpStatusCode::k401Unauthorized);
-				(*callbackPtr)(resp);
-			}
-			else {
-				req->session()->insert("user", username);
-				auto json = Json::Value();
-				json["user"] = username;
-				json["session_id"] = req->session()->sessionId();
-				auto resp = HttpResponse::newHttpJsonResponse(json);
-				(*callbackPtr)(resp);
-			}
-		},
-		[callbackPtr](const drogon::orm::DrogonDbException& e) {
-			LOG_ERROR << typeid(e).name();
-			auto resp = HttpResponse::newHttpResponse();
-			resp->setStatusCode(HttpStatusCode::k500InternalServerError);
-			(*callbackPtr)(resp);
-		}
-	);*/
 }
 
 void UserController::adminLogin(const HttpRequestPtr& req, std::function<void(const HttpResponsePtr&)>&& callback)
 {
-	auto mapper = drogon::orm::Mapper<drogon_model::votingregister::Admins>(dbClient);
+	auto mapper = drogon::orm::Mapper<drogon_model::votingregister::Users>(dbClient);
 	auto callbackPtr = std::make_shared<std::function<void(const HttpResponsePtr&)>>(std::move(callback));
 	auto& reqJson = *(req->getJsonObject());
 	std::string username = reqJson["username"].asString();
 	std::string pass = reqJson["pass"].asString();
 
-	mapper.findOne(
-		drogon::orm::Criteria(drogon_model::votingregister::Admins::Cols::_username, drogon::orm::CompareOperator::EQ, username),
-		[=](const drogon_model::votingregister::Admins& user) {
-			if (crypto_pwhash_argon2id_str_verify(user.getValueOfPass().c_str(), pass.c_str(), pass.length()) != 0) {
-				auto resp = HttpResponse::newHttpResponse();
-				resp->setStatusCode(HttpStatusCode::k401Unauthorized);
-				(*callbackPtr)(resp);
-			}
-			else {
-				req->session()->insert("user", username);
-				auto json = Json::Value();
-				json["user"] = username;
-				json["session_id"] = req->session()->sessionId();
-				auto resp = HttpResponse::newHttpJsonResponse(json);
-				(*callbackPtr)(resp);
-			}
-		},
-		[callbackPtr](const drogon::orm::DrogonDbException& e) {
-			LOG_ERROR << e.base().what();
-			auto resp = HttpResponse::newHttpResponse();
-			resp->setStatusCode(HttpStatusCode::k500InternalServerError);
+	auto users = dbClient->execSqlAsyncFuture("SELECT username, pass FROM admins WHERE username=$1", username);
+
+	try {
+		auto result = users.get();
+		if (result.size() == 0) {
+			auto json = Json::Value();
+			json["error"] = "No user found";
+			auto resp = HttpResponse::newHttpJsonResponse(json);
+			resp->setStatusCode(HttpStatusCode::k204NoContent);
+			(*callbackPtr)(resp);
+			return;
+		}
+		auto user = result[0];
+		if (crypto_pwhash_argon2id_str_verify(user["pass"].c_str(), pass.c_str(), pass.length()) != 0) {
+			auto json = Json::Value();
+			json["error"] = "Invalid password";
+			auto resp = HttpResponse::newHttpJsonResponse(json);
+			resp->setStatusCode(HttpStatusCode::k200OK);
 			(*callbackPtr)(resp);
 		}
-	);
+		else {
+			req->session()->insert("user", username);
+			auto json = Json::Value();
+			json["user"] = username;
+			json["session_id"] = req->session()->sessionId();
+			auto resp = HttpResponse::newHttpJsonResponse(json);
+			resp->setStatusCode(HttpStatusCode::k200OK);
+			(*callbackPtr)(resp);
+		}
+
+
+	}
+	catch (drogon::orm::UnexpectedRows& e) { // no user found
+		auto json = Json::Value();
+		json["error"] = "No user found";
+		auto resp = HttpResponse::newHttpJsonResponse(json);
+		resp->setStatusCode(HttpStatusCode::k204NoContent);
+		(*callbackPtr)(resp);
+		return;
+	}
+	catch (drogon::orm::DrogonDbException& e) {
+		LOG_ERROR << e.base().what();
+		LOG_ERROR << typeid(e).name();
+		auto resp = HttpResponse::newHttpResponse();
+		resp->setStatusCode(HttpStatusCode::k500InternalServerError);
+		(*callbackPtr)(resp);
+		return;
+	}
 }
 
 void UserController::registerUser(const HttpRequestPtr& req, std::function<void(const HttpResponsePtr&)>&& callback)
@@ -155,7 +161,7 @@ void UserController::registerUser(const HttpRequestPtr& req, std::function<void(
 
 
 	}
-	catch(drogon::orm::UnexpectedRows){ // no user found
+	catch(drogon::orm::UnexpectedRows e){ // no user found
 		auto resp = HttpResponse::newHttpResponse();
 		resp->setStatusCode(HttpStatusCode::k204NoContent);
 		(*callbackPtr)(resp);

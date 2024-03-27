@@ -2,38 +2,39 @@
   <p>
     <mat-toolbar color="primary">
       <button mat-icon-button class="example-icon" aria-label="Example icon-button with menu icon">
-        <mat-icon>menu</mat-icon>
+        <mat-icon>verified_user</mat-icon>
+        
       </button>
       <span>HEVoting</span>
       <span class="example-spacer"></span>
-      <button mat-icon-button class="example-icon favorite-icon" aria-label="Example icon-button with heart icon">
-        <mat-icon>favorite</mat-icon>
+      <button mat-button color="accent" (click)="getActivePolls()">
+        U toku
       </button>
-      <button mat-icon-button class="example-icon" aria-label="Example icon-button with share icon">
-        <mat-icon>share</mat-icon>
-      </button>
+      <button mat-button color="accent" (click)="getFinishedPolls()">
+        Rezultati
+        </button>
     </mat-toolbar>
   </p>
   <div class="container">
     <div class="row">
-      <div *ngFor="let poll of polls" class="col-md-4 col-xs-12">
-        <div class="card mt-4 ">
+      <div *ngFor="let poll of polls; let i = index" class="col-md-4 col-xs-12">
+        <div *ngIf="timeLeft[i] > 0 || active == false" class="card mt-4">
           <!--<div class="custom-shape-divider-bottom-1707228690">
             <svg data-name="Layer 1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 120"
               preserveAspectRatio="none">
               <path d="M0,0V6c0,21.6,291,111.46,741,110.26,445.39,3.6,459-88.3,459-110.26V0Z" class="shape-fill"></path>
             </svg>
           </div> -->
-          <div class="card-header ">
-            New Poll
+          <div class="card-header text-white" style="background-color: #00AA9E;">
+            Izbor
           </div>
           <div style="padding-left: 1em; padding-bottom: 1em; padding-top: 1em;" class="card-overlay">
             <h5 class="card-title">{{poll.title}}</h5>
-            <p class="card-text">
-
+            <p *ngIf="active==true" class="card-text">
+              {{days[i] | number: '1.0-0'}}d {{hours[i]}}h {{minutes[i]}}m {{seconds[i]}}s
             </p>
             <p class="card-text"></p>
-            <button routerLink="/voter/submit-vote/{{poll.id}}" routerLinkActive="active" mat-flat-button color="accent">Glasaj</button>
+            <button routerLink="/voter/poll/{{poll.id}}" routerLinkActive="active" mat-flat-button color="accent">Otvori</button>
           </div>
           
         </div>

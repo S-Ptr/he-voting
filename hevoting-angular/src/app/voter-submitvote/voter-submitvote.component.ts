@@ -6,6 +6,8 @@ import SEAL from 'node-seal'
 import { SEALLibrary } from 'node-seal/implementation/seal';
 import { PlainText } from 'node-seal/implementation/plain-text';
 import { CipherText } from 'node-seal/implementation/cipher-text';
+import { MatSnackBar } from '@angular/material/snack-bar';
+import {ClipboardModule} from '@angular/cdk/clipboard';
 var seal:SEALLibrary;
 (async () => {
   if (typeof window !== 'undefined') { seal = (await SEAL()); }
@@ -19,6 +21,10 @@ var seal:SEALLibrary;
 export class VoterSubmitvoteComponent implements OnInit {
   
   title:string = "";
+  status:string ="";
+  results:number[] = [];
+  totalVotes:number = 0;
+  percentages:number[] = [];
   candidates:any[] = [];
   chosen:number=-1;
   checkConfirm:boolean=false
@@ -26,24 +32,48 @@ export class VoterSubmitvoteComponent implements OnInit {
   serializedPublicKey:string="";
   msg:string = "";
   processing:boolean=false;
+  showEncrypted:boolean=false;
+  encryptedResult:string="";
 
-  constructor( private route: ActivatedRoute, private votingservice:VotingService, private formBuilder:FormBuilder, private router:Router) { 
+  constructor( private route: ActivatedRoute, private votingservice:VotingService, private formBuilder:FormBuilder, private router:Router, private snackbar:MatSnackBar) { 
     
+  }
+
+  openSnackBar(message: string, action: string) {
+    this.snackbar.open(message, action, {duration:3000});
   }
   
   ngOnInit(): void {
     let id = this.route.snapshot.paramMap.get('identifier')!;
     
     this.votingservice.getPoll(id).subscribe((data:any)=>{
+      console.log(data);
       this.title = data.poll.title;
       this.candidates= data.candidates;
-      this.keyarray = this.toBinary(data.poll.secretkey);
-      this.serializedPublicKey = data.poll.secretkey;
+      this.status = data.status;
+      if(this.status == "active"){
+        this.keyarray = this.toBinary(data.poll.secretkey);
+        this.serializedPublicKey = data.poll.secretkey;
+      }else if(this.status=="finished"){
+        this.results = data.result;
+        this.encryptedResult = data.encryptedResult;
+        this.results.forEach(element => {
+          this.totalVotes += element;
+          this.percentages.push(0);
+        });
+      }
+      setTimeout(()=>{
+      for(let i = 0; i < this.percentages.length;i++){
+        this.percentages[i] = 100*this.results[i]/this.totalVotes;
+      }
+      },50);
     })
+  }
 
-  
-
-
+  ngAfterContentInit():void{ //for animation purposes
+    for(let i = 0; i < this.percentages.length;i++){
+      this.percentages[i] = 100*this.results[i]/this.totalVotes;
+    }
   }
 
   toBinary(string:string) {
@@ -56,7 +86,7 @@ export class VoterSubmitvoteComponent implements OnInit {
 
   submitVote(){
     if(this.chosen == -1) {
-      this.msg = "Molimo vas izaberite"
+      this.openSnackBar("Molimo vas da napravite izbor", "OK");
       return;
     }
     
@@ -111,7 +141,7 @@ export class VoterSubmitvoteComponent implements OnInit {
       
       encrypted = encryptor.encrypt(plaintext)!;
     }else{
-      this.msg = "Encoding failure."
+      this.openSnackBar("Encoding Failure.", "OK");
       return;
     }
 
@@ -120,10 +150,10 @@ export class VoterSubmitvoteComponent implements OnInit {
       let encryptedString = encrypted.save()
     this.votingservice.submitVote(encryptedString,1,Number.parseInt(this.route.snapshot.paramMap.get('identifier')!)).subscribe((data)=>{
       this.processing=false;
-      this.msg = "Sve ok, proveri bekend.";
+      this.openSnackBar("Vas glas je uspesno zabelezen.", "OK");
     });
     }else{
-      this.msg = "Encryption failure."
+      this.openSnackBar("Encoding Failure.", "OK");
       return;
     }
 

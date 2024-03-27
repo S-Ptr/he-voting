@@ -38,10 +38,11 @@ namespace heVote {
             //-- ADD_METHOD_TO(VotingController::showPoll, "/poll/{1}", Get);
             ADD_METHOD_TO(VotingController::createPoll, "/create-poll", Post);
             ADD_METHOD_TO(VotingController::getPoll, "/poll/{1}", Get);
-            ADD_METHOD_TO(VotingController::getAllPolls, "/get-all-polls", Get);
+            ADD_METHOD_TO(VotingController::getActivePolls, "/get-active-polls", Get);
+            ADD_METHOD_TO(VotingController::getFinishedPolls, "/get-finished-polls", Get);
             ADD_METHOD_TO(VotingController::submitVoteTest, "/submit-vote-test", Post);
             ADD_METHOD_TO(VotingController::submitVote, "/submit-vote", Post);
-            ADD_METHOD_TO(VotingController::VotingNoiseTest, "/testing-some-stuff", Get);
+            ADD_METHOD_TO(VotingController::VotingNoiseTest, "/testing-some-stuff", Get); //comment this one out if you don't want it.
         METHOD_LIST_END
             // your declaration of processing function maybe like this:
             // void get(const HttpRequestPtr& req, std::function<void (const HttpResponsePtr &)> &&callback, int p1, std::string p2);
@@ -57,8 +58,8 @@ namespace heVote {
 
 
             void getPoll(const HttpRequestPtr& req, std::function<void (const HttpResponsePtr &)> &&callback, std::string votingId) const;
-            void getAllPolls(const HttpRequestPtr& req, std::function<void(const HttpResponsePtr&)>&& callback) const;
-            void results(const HttpRequestPtr& req, std::function<void (const HttpResponsePtr &)> &&callback, std::string votingId) const;
+            void getActivePolls(const HttpRequestPtr& req, std::function<void(const HttpResponsePtr&)>&& callback) const;
+            void getFinishedPolls(const HttpRequestPtr& req, std::function<void(const HttpResponsePtr&)>&& callback) const;
             void submitVoteTest(const HttpRequestPtr& req, std::function<void(const HttpResponsePtr&)>&& callback);
             void submitVote(const HttpRequestPtr& req, std::function<void(const HttpResponsePtr&)>&& callback);
             void VotingNoiseTest(const HttpRequestPtr& req, std::function<void(const HttpResponsePtr&)>&& callback);

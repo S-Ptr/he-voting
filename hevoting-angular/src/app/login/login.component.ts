@@ -29,6 +29,9 @@ export class LoginComponent implements OnInit {
     }
 
     this.userservice.login(data).subscribe((data:any) => {
+      if(data.error){
+        this.msg = data.error;
+      }
       if (data) {
         window.sessionStorage.setItem("user", data.username)
         this.router.navigate(['/voter-main']);

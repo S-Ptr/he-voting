@@ -37,8 +37,13 @@ export class VotingService {
     return this.http.post(`${this.uri}/submit-vote-test`, data, { headers: headers });
   }
 
-  getAllPolls(){
+  getActivePolls(){
     const headers = new HttpHeaders({ 'Content-Type': 'application/json' });
-    return this.http.get(`${this.uri}/get-all-polls`, { headers: headers });
+    return this.http.get(`${this.uri}/get-active-polls`, { headers: headers });
+  }
+
+  getFinishedPolls(){
+    const headers = new HttpHeaders({ 'Content-Type': 'application/json' });
+    return this.http.get(`${this.uri}/get-finished-polls`, { headers: headers });
   }
 }

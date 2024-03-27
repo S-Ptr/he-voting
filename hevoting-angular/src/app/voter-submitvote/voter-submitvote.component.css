@@ -2,6 +2,11 @@
     background-color:#fffdef;
     border: 2px solid #1a1a1a;
     box-shadow: rgba(0, 0, 0, 0.24) 0px 3px 8px;
+    
+}
+
+.col-md-5.b64div{
+    word-wrap: break-word;
 }
 
 .unselectable {
@@ -21,3 +26,16 @@
     margin-left: 5px;
 }
 
+hr.fade-2 {
+    border: 0; 
+  height: 1px; 
+  background-image: linear-gradient(to right, #f0f0f0, #00b9ff, #59d941, #f0f0f0);
+  }
+
+hr#eight {
+    border: none;
+    height: 2px;
+    background: #000;
+    background: repeating-linear-gradient(90deg,#000,#000 6px,transparent 6px,transparent 12px);
+  }
+  

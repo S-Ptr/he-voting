@@ -22,7 +22,7 @@ namespace heVote {
 		// Unfortunately, the noise budget afforded by that bit size isn't capable of handling the amount of votes. So we shall use 29 bits instead.
 		//
 		// After doing some calculations and running tests using the votingNoiseTest method, I'm going to use 31 bits.
-		// It hits that sweet spot where neither the plaintext values, nor the noise budget bring down one another, leading to a nice 2 billion-ish votes available.
+		// It hits that sweet spot where neither the plaintext values, nor the noise budget bring down one another  , leading to a nice 2 billion-ish votes available.
 		// 
 		eParams->set_plain_modulus(seal::PlainModulus::Batching(VOTINGCONTROLLER_POLYMOD_DEGREE,31)); 
 		//********************************************
@@ -80,10 +80,13 @@ namespace heVote {
 		auto callbackPtr = std::make_shared<std::function<void(const HttpResponsePtr&)>>(std::move(callback));
 		auto& reqJson = *(req->getJsonObject());
 		//init mappers
-
 		//init poll with title
 		drogon_model::votingregister::Poll newPoll;
 		newPoll.setTitle(reqJson["title"].asString());
+		LOG_INFO << reqJson["endTime"].asInt64();
+		newPoll.setLastsUntil(trantor::Date(reqJson["endTime"].asInt64()*1000L));
+		newPoll.setLastsFrom(trantor::Date(reqJson["startTime"].asInt64() * 1000L));
+
 
 		auto transaction =  dbClient->newTransaction();
 		//init mappers
@@ -112,7 +115,6 @@ namespace heVote {
 		ciphertextZero.save(strstream);
 		std::string zeroStr = strstream.str();
 		newPoll.setVotes(zeroStr);
-
 
 		try {
 			pollMapper.insert(newPoll);
@@ -170,6 +172,8 @@ namespace heVote {
 		std::stringstream().swap(strstream); //flush the contents of the stream
 		strstream << stringbin;
 		ciphertext.load(*(this->context), strstream);
+		seal::Ciphertext ciphertext2(ciphertext);
+
 		delete[] bin;
 		//Ciphertext is now loaded
 
@@ -251,6 +255,7 @@ namespace heVote {
 			"", &bin_size,
 			NULL, sodium_base64_VARIANT_ORIGINAL) != 0) {
 			LOG_ERROR<<"Base64 Error: Failed to decode string";
+
 		}
 		
 		std::string stringbin(reinterpret_cast<char const*>(bin), bin_size);
@@ -281,6 +286,28 @@ namespace heVote {
 				seal::Ciphertext ciphertextVotes;
 				strstream<<pollVotes;
 				ciphertextVotes.load(*(this->context), strstream);
+
+				//validation
+				seal::Ciphertext ciphertext2(ciphertext);
+				evaluator.multiply_inplace(ciphertext2, ciphertext2);
+				std::cout << "After Multiplication: " << decryptor.invariant_noise_budget(ciphertext2) << "\n";
+				//evaluator.sub_inplace(ciphertext2, ciphertext);
+				seal::Plaintext plaintext2;
+				decryptor.decrypt(ciphertext2, plaintext2);
+				seal::BatchEncoder batchEncoder(*(this->context));
+				std::vector<uint64_t> control(3, 0ULL);
+				batchEncoder.decode(plaintext2, control);
+				for (int i = 0; i < candidateCount; i++) {
+					std::cout << control[i] << "\n";
+					/*if (control[i] != 0ULL) {
+						LOG_ERROR << "Vote is invalid!";
+						HttpResponsePtr resp = HttpResponse::newHttpResponse();
+						resp->setStatusCode(HttpStatusCode::k500InternalServerError);
+						(*callbackPtr)(resp);
+						return;
+					}*/
+				}
+
 				std::cout << "Noise budget before adding: " << decryptor.invariant_noise_budget(ciphertextVotes) << "\n";
 				evaluator.add_inplace(ciphertextVotes, ciphertext);
 				std::cout << "After adding: " << decryptor.invariant_noise_budget(ciphertextVotes) << "\n";
@@ -291,7 +318,6 @@ namespace heVote {
 
 				seal::Plaintext plaintext;
 				decryptor.decrypt(ciphertextVotes, plaintext);
-				seal::BatchEncoder batchEncoder(*(this->context));
 				std::vector<uint64_t> result(3, 0ULL);
 				batchEncoder.decode(plaintext, result);
 				std::cout << result.size()<<"\n";
@@ -348,6 +374,7 @@ namespace heVote {
 			[=](const drogon_model::votingregister::Poll& poll) {
 					drogon::orm::Mapper<drogon_model::votingregister::Candidate> candidateMapper = drogon::orm::Mapper<drogon_model::votingregister::Candidate>(dbClient);
 					drogon_model::votingregister::Poll poll2 = poll;
+					trantor::Date currentTime = trantor::Date::date();
 					candidateMapper.findBy(
 						drogon::orm::Criteria(drogon_model::votingregister::Candidate::Cols::_poll, drogon::orm::CompareOperator::EQ, pollId2), 
 						[=](const std::vector<drogon_model::votingregister::Candidate>& candidates) {
@@ -361,47 +388,111 @@ namespace heVote {
 							}
 							seal::SecretKey secretkey;
 							std::stringstream strstream;
-							try {
+
+							// Ongoing poll
+
+							if (poll.getValueOfLastsUntil() > currentTime && poll.getValueOfLastsFrom() < currentTime) {
+								jsonBody["status"] = "active";
+								try {
+									std::string str(poll2.getValueOfSecretkey().begin(), poll2.getValueOfSecretkey().end());
+									strstream << str;
+									secretkey.load(*(this->context), strstream);
+									seal::KeyGenerator pubkeygen(*(this->context), secretkey);
+									std::stringstream().swap(strstream); //flush the contents of the stream
+									seal::Serializable<seal::PublicKey> publicKey = pubkeygen.create_public_key();
+									seal::PublicKey publicKey2;
+									pubkeygen.create_public_key(publicKey2);
+									publicKey.save(strstream);
+								}
+								catch (const std::exception& e) {
+									LOG_ERROR << e.what();
+									resp->setStatusCode(HttpStatusCode::k500InternalServerError);
+									(*callbackPtr)(resp);
+									return;
+								}
+
+								//base64
+
+								const size_t keyLen = strstream.str().size();
+								const size_t  base64_max_len = sodium_base64_encoded_len(keyLen, sodium_base64_VARIANT_ORIGINAL);
+								std::string base64_str(base64_max_len - 1, 0);
+								char* encoded_str_char = sodium_bin2base64(
+									base64_str.data(),
+									base64_max_len,
+									(unsigned char*)strstream.str().data(),
+									keyLen,
+									sodium_base64_VARIANT_ORIGINAL
+								);
+
+								if (encoded_str_char == NULL) {
+									LOG_ERROR << "Base64 Error: Failed to encode string";
+									auto resp = HttpResponse::newHttpResponse();
+									resp->setStatusCode(HttpStatusCode::k500InternalServerError);
+									(*callbackPtr)(resp);
+									return;
+								}
+
+								jsonBody["poll"]["secretkey"] = base64_str;
+							}
+
+							// Concluded poll - show results
+
+							else if (poll.getValueOfLastsUntil() < currentTime) {
+								jsonBody["result"] = Json::Value(Json::arrayValue);
+								jsonBody["status"] = "finished";
+
+								//base64 for result
 								
-								std::string str(poll2.getValueOfSecretkey().begin(), poll2.getValueOfSecretkey().end());
-								strstream << str;
-								secretkey.load(*(this->context), strstream);
-								seal::KeyGenerator pubkeygen(*(this->context), secretkey);
-								std::stringstream().swap(strstream); //flush the contents of the stream
-								seal::Serializable<seal::PublicKey> publicKey = pubkeygen.create_public_key();
-								seal::PublicKey publicKey2;
-								pubkeygen.create_public_key(publicKey2);
-								publicKey.save(strstream);
-							}
-							catch (const std::exception& e) {
-								LOG_ERROR << e.what();
-								resp->setStatusCode(HttpStatusCode::k500InternalServerError);
-								(*callbackPtr)(resp);
-								return;
-							}
+								const size_t  base64_max_len = sodium_base64_encoded_len(poll.getValueOfVotesAsString().length(), sodium_base64_VARIANT_ORIGINAL);
+								std::string base64_str(base64_max_len - 1, 0);
+								char* encoded_str_char = sodium_bin2base64(
+									base64_str.data(),
+									base64_max_len,
+									(unsigned char*)poll.getValueOfVotesAsString().c_str(),
+									poll.getValueOfVotesAsString().length(),
+									sodium_base64_VARIANT_ORIGINAL
+								);
 
-							//base64
+								if (encoded_str_char == NULL) {
+									LOG_ERROR << "Base64 Error: Failed to encode string";
+									auto resp = HttpResponse::newHttpResponse();
+									resp->setStatusCode(HttpStatusCode::k500InternalServerError);
+									(*callbackPtr)(resp);
+									return;
+								}
 
-							const size_t keyLen = strstream.str().size();
-							const size_t  base64_max_len = sodium_base64_encoded_len(keyLen, sodium_base64_VARIANT_ORIGINAL);
-							std::string base64_str(base64_max_len - 1, 0);
-							char* encoded_str_char = sodium_bin2base64(
-								base64_str.data(),
-								base64_max_len,
-								(unsigned char*) strstream.str().data(),
-								keyLen,
-								sodium_base64_VARIANT_ORIGINAL
-							);
+								jsonBody["encryptedResult"] = base64_str;
 
-							if (encoded_str_char == NULL) {
-								LOG_ERROR << "Base64 Error: Failed to encode string";
-								auto resp = HttpResponse::newHttpResponse();
-								resp->setStatusCode(HttpStatusCode::k500InternalServerError);
-								(*callbackPtr)(resp);
+								try {
+									std::string str(poll2.getValueOfSecretkey().begin(), poll2.getValueOfSecretkey().end());
+									strstream << str;
+									secretkey.load(*(this->context), strstream);
+									seal::Decryptor decryptor(*(this->context), secretkey);
+									std::stringstream().swap(strstream);
+									std::string pollVotes = poll.getValueOfVotesAsString();
+
+									seal::Ciphertext ciphertextVotes;
+									strstream << pollVotes;
+									ciphertextVotes.load(*(this->context), strstream);
+									seal::Plaintext plaintext;
+									decryptor.decrypt(ciphertextVotes, plaintext);
+									seal::BatchEncoder batchEncoder(*(this->context));
+									std::vector<uint64_t> result(3, 0ULL);
+									batchEncoder.decode(plaintext, result);
+									for (int i = 0; i < candidates.size(); i++) {
+										jsonBody["result"].append(result[i]);
+									}
+								}
+								catch (const std::exception& e) {
+									LOG_ERROR << e.what();
+									resp->setStatusCode(HttpStatusCode::k500InternalServerError);
+									(*callbackPtr)(resp);
+									return;
+								}
 							}
-							
-							jsonBody["poll"]["secretkey"] = base64_str;
-							
+							else {
+								jsonBody["status"] = "inactive";
+							}
 							resp->setBody(jsonBody.toStyledString());
 							(*callbackPtr)(resp);
 						},
@@ -423,9 +514,35 @@ namespace heVote {
 
 	}
 
-	void VotingController::getAllPolls(const HttpRequestPtr& req, std::function<void(const HttpResponsePtr&)>&& callback) const {
+	void VotingController::getActivePolls(const HttpRequestPtr& req, std::function<void(const HttpResponsePtr&)>&& callback) const {
 		auto callbackPtr = std::make_shared<std::function<void(const HttpResponsePtr&)>>(std::move(callback));
-		dbClient->execSqlAsync("SELECT id, title, until FROM poll", [=](const drogon::orm::Result& polls) {
+		dbClient->execSqlAsync("SELECT id, title, lasts_until FROM poll WHERE lasts_until > NOW() AND lasts_from < NOW()", [=](const drogon::orm::Result& polls) {
+			Json::Value jsonBody(Json::objectValue);
+			jsonBody["polls"] = Json::Value(Json::arrayValue);
+			for (auto& poll : polls) {
+				Json::Value singlePoll;
+				singlePoll["id"] = poll["id"].as<int32_t>();
+				singlePoll["title"] = poll["title"].as<std::string>();
+				singlePoll["until"] = poll["lasts_until"].as<std::string>();
+				jsonBody["polls"].append(singlePoll);
+			}
+			auto resp = HttpResponse::newHttpResponse();
+			resp->setBody(jsonBody.toStyledString());
+			resp->setStatusCode(HttpStatusCode::k200OK);
+			(*callbackPtr)(resp);
+			},
+			[&callbackPtr](const drogon::orm::DrogonDbException& e) {
+				LOG_ERROR << e.base().what();
+				auto resp = HttpResponse::newHttpResponse();
+				resp->setStatusCode(HttpStatusCode::k500InternalServerError);
+				(*callbackPtr)(resp);
+			}
+		);
+	}
+
+	void VotingController::getFinishedPolls(const HttpRequestPtr& req, std::function<void(const HttpResponsePtr&)>&& callback) const {
+		auto callbackPtr = std::make_shared<std::function<void(const HttpResponsePtr&)>>(std::move(callback));
+		dbClient->execSqlAsync("SELECT id, title FROM poll WHERE lasts_until < NOW()", [=](const drogon::orm::Result& polls) {
 			Json::Value jsonBody(Json::objectValue);
 			jsonBody["polls"] = Json::Value(Json::arrayValue);
 			for (auto& poll : polls) {
@@ -448,26 +565,19 @@ namespace heVote {
 		);
 	}
 
-	void VotingController::results(const HttpRequestPtr& req, std::function<void(const HttpResponsePtr&)>&& callback, std::string votingId) const {
-		//TODO: everything
-		int32_t votingId2 = std::stoi(votingId);
-
-		auto callbackPtr = std::make_shared<std::function<void(const HttpResponsePtr&)>>(std::move(callback));
-
-	}
 
 
-	//Method for testing how many operations can a ciphertext take before it gets ruined
+	//Method for testing how the parameters affect the noise budget, size of the ciphertext, plaintext data cap, elapsed time, and other things
 	void VotingController::VotingNoiseTest(const HttpRequestPtr& req, std::function<void(const HttpResponsePtr&)>&& callback) {
 		auto callbackPtr = std::make_shared<std::function<void(const HttpResponsePtr&)>>(std::move(callback));
 		uint64_t count = 0;
 		int candidates = 20;
 
-		int polyModulusDegree = 4096;
+		int polyModulusDegree = 8192;
 		seal::EncryptionParameters encParams1(seal::scheme_type::bgv);
 		encParams1.set_poly_modulus_degree(polyModulusDegree);
-		encParams1.set_plain_modulus(seal::PlainModulus::Batching(polyModulusDegree, 31));
-		encParams1.set_coeff_modulus(seal::CoeffModulus::Create(polyModulusDegree, { 36,36,36 }));
+		encParams1.set_plain_modulus(seal::PlainModulus::Batching(polyModulusDegree, 60));
+		encParams1.set_coeff_modulus(seal::CoeffModulus::BFVDefault(polyModulusDegree));
 		seal::SEALContext context1(encParams1);
 		seal::KeyGenerator keygen1(context1);
 		seal::Evaluator evaluator(context1);
@@ -489,6 +599,7 @@ namespace heVote {
 		encryptor1.encrypt(zeroArrayPlain, mainCiphertext);
 		LOG_INFO << "Polynomial modulus degree: " << polyModulusDegree;
 		LOG_INFO << "Plain modulus: " << encParams1.plain_modulus().value();
+		
 		int noiseBudget = decryptor.invariant_noise_budget(mainCiphertext);
 		LOG_INFO << "Initial noise budget: " << noiseBudget;
 		unsigned long long worstEstimate = 2; 
@@ -507,7 +618,15 @@ namespace heVote {
 		seal::Plaintext voteArray;
 		batchEncoder.encode(votes1, voteArray);
 		encryptor.encrypt(zeroArrayPlain, ciphertext);
-		LOG_INFO << "Running simulation of voting: ";
+		
+		std::stringstream strstream;
+		ciphertext.save(strstream);
+		LOG_INFO << "Ciphertext size: " << strstream.str().length();
+
+		seal::Ciphertext ciphertext2(ciphertext);
+		evaluator.multiply_inplace(ciphertext2, ciphertext2);
+		LOG_INFO << "Noise budget after multiplication: " << decryptor.invariant_noise_budget(ciphertext2);
+		LOG_INFO << "Running simulation of voting";
 
 		while (decryptor.invariant_noise_budget(mainCiphertext) != 0) {
 			count++;
@@ -520,4 +639,5 @@ namespace heVote {
 		}
 		LOG_INFO << "Ciphertext unusable after " << count << " additions";
 	}
+
 }

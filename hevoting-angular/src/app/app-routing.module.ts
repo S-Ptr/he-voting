@@ -11,7 +11,7 @@ import { LandingPageComponent } from './landing-page/landing-page.component';
 
 const routes: Routes = [
   {path:"admin/create-poll",component:AdminCreatepollComponent},
-  {path:'voter/submit-vote/:identifier',component: VoterSubmitvoteComponent},
+  {path:'voter/poll/:identifier',component: VoterSubmitvoteComponent},
   {path:'login',component: LoginComponent},
   {path:'admin-login',component: AdminLoginComponent},
   {path:'register',component: RegisterComponent},

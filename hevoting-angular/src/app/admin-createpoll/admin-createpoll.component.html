@@ -1,7 +1,7 @@
 <p>
   <mat-toolbar color="warn">
     <button mat-icon-button class="example-icon" aria-label="Example icon-button with menu icon">
-      <mat-icon>menu</mat-icon>
+      <mat-icon>verified_user</mat-icon>
     </button>
     <span>HEVoting</span>
     <span class="example-spacer"></span>
@@ -18,6 +18,19 @@
   <div class="row">
     <h2>Kreiraj Glasanje</h2>
   </div>
+
+  
+  <mat-form-field>
+    <mat-label>Početak glasanja</mat-label>
+    <input [(ngModel)]='startTime' matInput type="datetime-local" placeholder="start date">
+  </mat-form-field>
+
+  <br/>
+
+  <mat-form-field>
+    <mat-label>Kraj glasanja</mat-label>
+    <input [(ngModel)]='endTime' matInput type="datetime-local" placeholder="end date">
+  </mat-form-field>
 
   <form [formGroup]="form" (submit)="submit(form.value)">
     <div class="row">
@@ -60,3 +73,5 @@
   <input type="checkbox" name="checkConfirm" [(ngModel)]="checkConfirm">
   <br />
 </div>
+
+{{msg}}

@@ -46,7 +46,8 @@ class Poll
         static const std::string _title;
         static const std::string _secretkey;
         static const std::string _votes;
-        static const std::string _until;
+        static const std::string _lasts_until;
+        static const std::string _lasts_from;
     };
 
     const static int primaryKeyNumber;
@@ -140,17 +141,26 @@ class Poll
     void setVotes(const std::string &pVotes) noexcept;
     void setVotesToNull() noexcept;
 
-    /**  For column until  */
-    ///Get the value of the column until, returns the default value if the column is null
-    const ::trantor::Date &getValueOfUntil() const noexcept;
+    /**  For column lasts_until  */
+    ///Get the value of the column lasts_until, returns the default value if the column is null
+    const ::trantor::Date &getValueOfLastsUntil() const noexcept;
     ///Return a shared_ptr object pointing to the column const value, or an empty shared_ptr object if the column is null
-    const std::shared_ptr<::trantor::Date> &getUntil() const noexcept;
-    ///Set the value of the column until
-    void setUntil(const ::trantor::Date &pUntil) noexcept;
-    void setUntilToNull() noexcept;
+    const std::shared_ptr<::trantor::Date> &getLastsUntil() const noexcept;
+    ///Set the value of the column lasts_until
+    void setLastsUntil(const ::trantor::Date &pLastsUntil) noexcept;
+    void setLastsUntilToNull() noexcept;
+
+    /**  For column lasts_from  */
+    ///Get the value of the column lasts_from, returns the default value if the column is null
+    const ::trantor::Date &getValueOfLastsFrom() const noexcept;
+    ///Return a shared_ptr object pointing to the column const value, or an empty shared_ptr object if the column is null
+    const std::shared_ptr<::trantor::Date> &getLastsFrom() const noexcept;
+    ///Set the value of the column lasts_from
+    void setLastsFrom(const ::trantor::Date &pLastsFrom) noexcept;
+    void setLastsFromToNull() noexcept;
 
 
-    static size_t getColumnNumber() noexcept {  return 5;  }
+    static size_t getColumnNumber() noexcept {  return 6;  }
     static const std::string &getColumnName(size_t index) noexcept(false);
 
     Json::Value toJson() const;
@@ -171,7 +181,8 @@ class Poll
     std::shared_ptr<std::string> title_;
     std::shared_ptr<std::vector<char>> secretkey_;
     std::shared_ptr<std::vector<char>> votes_;
-    std::shared_ptr<::trantor::Date> until_;
+    std::shared_ptr<::trantor::Date> lastsUntil_;
+    std::shared_ptr<::trantor::Date> lastsFrom_;
     struct MetaData
     {
         const std::string colName_;
@@ -183,7 +194,7 @@ class Poll
         const bool notNull_;
     };
     static const std::vector<MetaData> metaData_;
-    bool dirtyFlag_[5]={ false };
+    bool dirtyFlag_[6]={ false };
   public:
     static const std::string &sqlForFindingByPrimaryKey()
     {
@@ -220,7 +231,12 @@ class Poll
         }
         if(dirtyFlag_[4])
         {
-            sql += "until,";
+            sql += "lasts_until,";
+            ++parametersCount;
+        }
+        if(dirtyFlag_[5])
+        {
+            sql += "lasts_from,";
             ++parametersCount;
         }
         needSelection=true;
@@ -252,6 +268,11 @@ class Poll
             sql.append(placeholderStr, n);
         }
         if(dirtyFlag_[4])
+        {
+            n = sprintf(placeholderStr,"$%d,",placeholder++);
+            sql.append(placeholderStr, n);
+        }
+        if(dirtyFlag_[5])
         {
             n = sprintf(placeholderStr,"$%d,",placeholder++);
             sql.append(placeholderStr, n);

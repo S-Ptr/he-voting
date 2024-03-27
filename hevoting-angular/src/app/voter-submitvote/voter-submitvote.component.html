@@ -1,16 +1,15 @@
 <p>
     <mat-toolbar color="primary">
         <button mat-icon-button class="example-icon" aria-label="Example icon-button with menu icon">
-            <mat-icon>menu</mat-icon>
+            <mat-icon>verified_user</mat-icon>
         </button>
         <span>HEVoting</span>
         <span class="example-spacer"></span>
-        <button mat-icon-button class="example-icon favorite-icon" aria-label="Example icon-button with heart icon">
-            <mat-icon>favorite</mat-icon>
+        <button mat-icon-button class="example-icon" aria-label="Example icon-button with share icon" routerLink="/voter-main">
+            <mat-icon>home</mat-icon>
         </button>
-        <button mat-icon-button class="example-icon" aria-label="Example icon-button with share icon">
-            <mat-icon>share</mat-icon>
-        </button>
+        
+
     </mat-toolbar>
 </p>
 <br />
@@ -21,8 +20,10 @@
     <div class="row justify-content-md-center">
         <div class="col-md-5 unselectable">
             <h1 style="text-align: center;">{{title}}</h1>
+            <hr class="fade-2">
             <br/>
 
+            <div *ngIf="status=='active'">
             <div *ngFor="let i of candidates">
 
                 <input id="vote_{{i.ord}}" type="radio" name="vote" [(ngModel)]="chosen" [value]=i.ord>
@@ -38,6 +39,29 @@
             <div class="spinner">
             <button mat-raised-button color="accent" [disabled]="!checkConfirm || processing" type="submit"(click)="submitVote()">Glasaj</button>       
                 <mat-spinner *ngIf="processing" [diameter]="32"></mat-spinner>
+            </div>
+            </div>
+            <div *ngIf="status=='finished'">
+                <div *ngFor="let i of results; let k = index">
+
+                    {{candidates[k].name}} - {{100*i/totalVotes}}% ({{i}} glasova)
+                    <br />
+                    <div class="progress">
+                        <div class="progress-bar progress-bar-striped bg-success progress-bar-animated" role="progressbar" [style.width.%]="percentages[k]" [attr.aria-valuenow]="percentages[k]" aria-valuemin="0" aria-valuemax="100"></div>
+                    </div>
+                    <br />
+                    <br />
+                </div>
+                <button mat-raised-button color="primary" style='margin-right:16px' type="submit"(click)="showEncrypted = !showEncrypted;">Prikazi sifrovan rezultat</button>
+                <button mat-raised-button color="accent" *ngIf="showEncrypted" [cdkCopyToClipboard]="encryptedResult">Kopiraj sifrovan rezultat</button>
+                
+                <div style="word-wrap: break-word;" *ngIf="showEncrypted">
+                    <br/>
+                    <br/>
+                    <hr id="eight"/>
+                    <br/>
+                    <p>{{encryptedResult}}</p>
+                </div>
             </div>
                 <br />
                 <br />
