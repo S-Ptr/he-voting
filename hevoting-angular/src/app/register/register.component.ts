@@ -32,6 +32,7 @@ export class RegisterComponent {
     this.userservice.register(data).subscribe((data:any) => {
       if(data == null){
         this.router.navigate(['/login']);
+        return;
       }
       if(data.error){
         this.msg = data.error;

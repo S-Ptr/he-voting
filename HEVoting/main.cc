@@ -33,7 +33,8 @@ int main() {
             resp->addHeader("Access-Control-Allow-Origin", "http://localhost:4200");
             resp->addHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
             resp->addHeader("Access-Control-Allow-Headers", "Content-Type");
-        });
+        }
+    );
     
     for (auto& listener : drogon::app().getCustomConfig()["listeners"]) {
         LOG_INFO << "Listening on port" << listener["port"].asString();

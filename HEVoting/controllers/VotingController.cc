@@ -202,7 +202,6 @@ namespace heVote {
 			std::stringstream().swap(strstream);
 			evaluator.add_inplace(ciphertextVotes, ciphertext);
 
-			std::stringstream().swap(strstream);
 			ciphertextVotes.save(strstream);
 			std::vector<char> ciphertextVotesVector;
 			ciphertextVotesVector.assign(std::istreambuf_iterator<char>(strstream), std::istreambuf_iterator<char>());

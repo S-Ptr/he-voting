@@ -1,12 +1,5 @@
-.mat-mdc-snack-bar-container {
-    --mat-mdc-snack-bar-button-color: #ffffff;
-    --mdc-snackbar-supporting-text-color: #ffffff;
-  
-    &.app-notification-error {
-      --mdc-snackbar-container-color: #a12019;
-    }
-  
-    &.app-notification-success {
-      --mdc-snackbar-container-color: #000000;
-    }
-  }
+.style-error {
+    color: white;
+    --mdc-snackbar-container-color: #FF005D !important;
+    --mat-mdc-snack-bar-button-color: rgb(252, 252, 252);
+}

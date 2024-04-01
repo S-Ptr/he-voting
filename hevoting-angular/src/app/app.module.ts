@@ -28,6 +28,7 @@ import {MatCardModule} from '@angular/material/card';
 import {MatSnackBarModule} from '@angular/material/snack-bar';
 
 import {ClipboardModule} from '@angular/cdk/clipboard';
+import { LogoutComponent } from './logout/logout.component';
 
 @NgModule({
   declarations: [
@@ -39,7 +40,8 @@ import {ClipboardModule} from '@angular/cdk/clipboard';
     AdminLoginComponent,
     RegisterComponent,
     AdminRegisterComponent,
-    LandingPageComponent
+    LandingPageComponent,
+    LogoutComponent
   ],
   imports: [
     BrowserModule,

@@ -23,3 +23,7 @@
 .card-header{
     fill: #b3d9d9;
 }
+
+.example-spacer {
+    flex: 1 1 auto;
+  }

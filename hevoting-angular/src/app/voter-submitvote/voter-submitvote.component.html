@@ -4,9 +4,13 @@
             <mat-icon>verified_user</mat-icon>
         </button>
         <span>HEVoting</span>
-        <span class="example-spacer"></span>
+
         <button mat-icon-button class="example-icon" aria-label="Example icon-button with share icon" routerLink="/voter-main">
             <mat-icon>home</mat-icon>
+        </button>
+        <span class="example-spacer"></span>
+        <button mat-button color="warn" routerLink="/logout">
+            <mat-icon>logout</mat-icon>
         </button>
         
 
@@ -52,8 +56,8 @@
                     <br />
                     <br />
                 </div>
-                <button mat-raised-button color="primary" style='margin-right:16px' type="submit"(click)="showEncrypted = !showEncrypted;">Prikazi sifrovan rezultat</button>
-                <button mat-raised-button color="accent" *ngIf="showEncrypted" [cdkCopyToClipboard]="encryptedResult">Kopiraj sifrovan rezultat</button>
+                <button mat-raised-button color="primary" style='margin-right:16px' type="submit"(click)="showEncrypted = !showEncrypted;">Prikaži šifrovan rezultat</button>
+                <button mat-raised-button color="accent" *ngIf="showEncrypted" [cdkCopyToClipboard]="encryptedResult">Kopiraj šifrovan rezultat</button>
                 
                 <div style="word-wrap: break-word;" *ngIf="showEncrypted">
                     <br/>

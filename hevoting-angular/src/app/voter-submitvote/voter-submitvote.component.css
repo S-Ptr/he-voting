@@ -39,3 +39,6 @@ hr#eight {
     background: repeating-linear-gradient(90deg,#000,#000 6px,transparent 6px,transparent 12px);
   }
   
+  .example-spacer {
+    flex: 1 1 auto;
+  }

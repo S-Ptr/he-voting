@@ -6,13 +6,17 @@
         
       </button>
       <span>HEVoting</span>
-      <span class="example-spacer"></span>
+      
       <button mat-button color="accent" (click)="getActivePolls()">
         U toku
       </button>
       <button mat-button color="accent" (click)="getFinishedPolls()">
         Rezultati
-        </button>
+      </button>
+      <span class="example-spacer"></span>
+      <button mat-button color="warn" routerLink="/logout">
+        <mat-icon>logout</mat-icon>
+      </button>
     </mat-toolbar>
   </p>
   <div class="container">

@@ -28,7 +28,10 @@ export class AdminLoginComponent {
 
     this.userservice.adminLogin(data).subscribe((data:any) => {
       if (data) {
-        window.sessionStorage.setItem("user", data.username)
+        let user = {name:data.name, type:"admin"}
+        localStorage.setItem('user', JSON.stringify(user));
+        this.router.navigate(['/voter-main']);
+        this.router.navigate(["/admin/create-poll"]);
       }
       else {
         this.msg = 'Neispravno uneti podaci';
